@@ -6,603 +6,746 @@
 <title>PrepAI — AI Placement Assistant</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
-:root {
-  --c1: #6366f1; --c2: #8b5cf6; --c3: #06b6d4;
-  --bg: #030712; --glass: rgba(255,255,255,0.04);
-}
-*{margin:0;padding:0;box-sizing:border-box}
-html{scroll-behavior:smooth}
-body{background:var(--bg);color:#fff;font-family:'Segoe UI',system-ui,sans-serif;overflow-x:hidden}
+  :root {
+    --accent: #7c3aed;
+    --accent2: #06b6d4;
+    --accent3: #f59e0b;
+    --bg: #030712;
+    --glass: rgba(255,255,255,0.04);
+    --border: rgba(255,255,255,0.08);
+  }
+  *{margin:0;padding:0;box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--bg);
+    color:#fff;
+    font-family:'Inter',system-ui,sans-serif;
+    overflow-x:hidden;
+  }
 
-/* Canvas */
-#bg-canvas{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+  /* Canvas */
+  #bg-canvas{
+    position:fixed;top:0;left:0;width:100%;height:100%;
+    z-index:0;pointer-events:none;
+  }
 
-/* Noise overlay */
-body::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");opacity:.4;z-index:1;pointer-events:none}
+  /* Layout */
+  .content{position:relative;z-index:10}
 
-/* Layout */
-.wrap{position:relative;z-index:2}
+  /* Nav */
+  nav{
+    position:fixed;top:0;left:0;right:0;z-index:100;
+    display:flex;align-items:center;justify-content:space-between;
+    padding:16px 48px;
+    background:rgba(3,7,18,0.7);
+    backdrop-filter:blur(20px);
+    border-bottom:1px solid var(--border);
+  }
+  .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
+  .logo-icon{
+    width:36px;height:36px;border-radius:10px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;font-size:18px;
+  }
+  .nav-links{display:flex;gap:8px}
+  .nav-links a{
+    color:rgba(255,255,255,0.6);text-decoration:none;
+    padding:8px 16px;border-radius:8px;font-size:14px;
+    transition:all 0.2s;
+  }
+  .nav-links a:hover{color:#fff;background:var(--glass)}
+  .nav-cta{
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    color:#fff!important;padding:8px 20px!important;border-radius:8px!important;
+    font-weight:600!important;
+  }
 
-/* Nav */
-nav{position:fixed;top:0;left:0;right:0;z-index:100;padding:18px 40px;display:flex;align-items:center;justify-content:space-between;backdrop-filter:blur(20px);background:rgba(3,7,18,0.7);border-bottom:1px solid rgba(255,255,255,0.06)}
-.nav-logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;letter-spacing:-.3px}
-.logo-orb{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--c1),var(--c2));display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 0 20px rgba(99,102,241,.5)}
-.nav-links{display:flex;gap:8px}
-.nav-links a{padding:8px 16px;border-radius:8px;font-size:14px;color:rgba(255,255,255,.7);text-decoration:none;transition:.2s}
-.nav-links a:hover{background:rgba(255,255,255,.08);color:#fff}
-.nav-cta{padding:9px 20px;border-radius:9px;background:linear-gradient(135deg,var(--c1),var(--c2));font-size:14px;font-weight:600;color:#fff;text-decoration:none;box-shadow:0 0 20px rgba(99,102,241,.4);transition:.2s}
-.nav-cta:hover{transform:translateY(-1px);box-shadow:0 0 30px rgba(99,102,241,.6)}
+  /* Hero */
+  .hero{
+    min-height:100vh;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;
+    text-align:center;padding:120px 24px 80px;
+    position:relative;
+  }
+  .hero-badge{
+    display:inline-flex;align-items:center;gap:8px;
+    background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);
+    padding:6px 16px;border-radius:100px;font-size:13px;
+    color:#a78bfa;margin-bottom:32px;
+    animation:fadeInDown 0.8s ease both;
+  }
+  .hero-badge span{width:6px;height:6px;background:#a78bfa;border-radius:50%;animation:pulse 2s infinite}
+  .hero h1{
+    font-size:clamp(42px,8vw,88px);font-weight:800;
+    line-height:1.05;letter-spacing:-2px;
+    margin-bottom:24px;
+    animation:fadeInUp 0.8s 0.1s ease both;
+  }
+  .grad-text{
+    background:linear-gradient(135deg,#fff 0%,#a78bfa 40%,var(--accent2) 80%);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  }
+  .hero p{
+    font-size:clamp(16px,2vw,20px);color:rgba(255,255,255,0.5);
+    max-width:580px;line-height:1.7;margin-bottom:48px;
+    animation:fadeInUp 0.8s 0.2s ease both;
+  }
+  .hero-buttons{
+    display:flex;gap:16px;flex-wrap:wrap;justify-content:center;
+    animation:fadeInUp 0.8s 0.3s ease both;
+  }
+  .btn-main{
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    color:#fff;padding:14px 32px;border-radius:12px;
+    font-size:16px;font-weight:600;text-decoration:none;
+    border:none;cursor:pointer;transition:all 0.3s;
+    box-shadow:0 0 40px rgba(124,58,237,0.4);
+    display:inline-flex;align-items:center;gap:8px;
+  }
+  .btn-main:hover{transform:translateY(-2px);box-shadow:0 0 60px rgba(124,58,237,0.6)}
+  .btn-outline{
+    background:var(--glass);color:#fff;
+    padding:14px 32px;border-radius:12px;
+    font-size:16px;font-weight:500;text-decoration:none;
+    border:1px solid var(--border);cursor:pointer;
+    transition:all 0.3s;display:inline-flex;align-items:center;gap:8px;
+    backdrop-filter:blur(10px);
+  }
+  .btn-outline:hover{border-color:rgba(124,58,237,0.5);background:rgba(124,58,237,0.1)}
 
-/* Hero */
-.hero{min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:100px 20px 60px;position:relative}
-.hero-badge{display:inline-flex;align-items:center;gap:8px;padding:6px 16px;border-radius:100px;border:1px solid rgba(99,102,241,.4);background:rgba(99,102,241,.1);font-size:13px;color:#a5b4fc;margin-bottom:28px;backdrop-filter:blur(10px)}
-.badge-dot{width:6px;height:6px;border-radius:50%;background:#6366f1;box-shadow:0 0 8px #6366f1;animation:pulse 2s infinite}
-@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.5;transform:scale(.8)}}
-h1{font-size:clamp(42px,7vw,88px);font-weight:800;line-height:1.05;letter-spacing:-2px;margin-bottom:24px}
-.grad{background:linear-gradient(135deg,#fff 0%,#a5b4fc 40%,#67e8f9 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.hero-sub{font-size:clamp(16px,2vw,20px);color:rgba(255,255,255,.5);max-width:560px;margin:0 auto 40px;line-height:1.7}
-.hero-btns{display:flex;gap:14px;justify-content:center;flex-wrap:wrap;margin-bottom:60px}
-.btn-glow{padding:14px 32px;border-radius:12px;background:linear-gradient(135deg,var(--c1),var(--c2));font-size:15px;font-weight:600;color:#fff;text-decoration:none;box-shadow:0 0 30px rgba(99,102,241,.5);transition:.3s;border:none;cursor:pointer}
-.btn-glow:hover{transform:translateY(-2px);box-shadow:0 0 50px rgba(99,102,241,.7)}
-.btn-outline{padding:14px 32px;border-radius:12px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.15);font-size:15px;font-weight:500;color:#fff;text-decoration:none;backdrop-filter:blur(10px);transition:.3s}
-.btn-outline:hover{background:rgba(255,255,255,.08);border-color:rgba(255,255,255,.3)}
+  /* Floating 3D card preview */
+  .hero-visual{
+    margin-top:80px;width:100%;max-width:900px;
+    animation:float 6s ease-in-out infinite, fadeInUp 1s 0.4s ease both;
+    perspective:1000px;
+  }
+  .chat-card{
+    background:rgba(255,255,255,0.03);
+    border:1px solid rgba(255,255,255,0.08);
+    border-radius:20px;padding:24px;
+    backdrop-filter:blur(20px);
+    transform:rotateX(8deg) rotateY(-3deg);
+    transform-style:preserve-3d;
+    transition:transform 0.3s;
+    box-shadow:
+      0 0 0 1px rgba(124,58,237,0.1),
+      0 40px 80px rgba(0,0,0,0.6),
+      0 0 100px rgba(124,58,237,0.1) inset;
+  }
+  .chat-card:hover{transform:rotateX(4deg) rotateY(-1deg)}
+  .chat-topbar{
+    display:flex;align-items:center;gap:12px;
+    padding-bottom:16px;border-bottom:1px solid var(--border);margin-bottom:16px;
+  }
+  .chat-avatar{
+    width:32px;height:32px;border-radius:8px;
+    background:linear-gradient(135deg,var(--accent),var(--accent2));
+    display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;
+  }
+  .chat-mode{font-size:13px;font-weight:600}
+  .chat-sub{font-size:11px;color:rgba(255,255,255,0.4)}
+  .msg{display:flex;gap:10px;margin-bottom:12px;align-items:flex-start}
+  .msg.user{flex-direction:row-reverse}
+  .msg-av{
+    width:28px;height:28px;border-radius:50%;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:12px;
+  }
+  .msg-av.ai{background:rgba(124,58,237,0.2);color:#a78bfa}
+  .msg-av.user{background:rgba(6,182,212,0.2);color:#67e8f9}
+  .msg-bubble{
+    max-width:75%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.5;text-align:left;
+  }
+  .msg-bubble.ai{
+    background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.2);color:rgba(255,255,255,0.85);
+    border-radius:4px 12px 12px 12px;
+  }
+  .msg-bubble.user{
+    background:linear-gradient(135deg,rgba(124,58,237,0.4),rgba(6,182,212,0.3));
+    color:#fff;border-radius:12px 4px 12px 12px;
+  }
+  .typing{display:flex;gap:4px;align-items:center;padding:10px 14px;
+    background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.2);
+    border-radius:4px 12px 12px 12px;width:fit-content;
+  }
+  .typing span{width:6px;height:6px;background:#a78bfa;border-radius:50%;animation:typingBounce 1.2s infinite}
+  .typing span:nth-child(2){animation-delay:0.2s}
+  .typing span:nth-child(3){animation-delay:0.4s}
+  .code-block{
+    background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.06);
+    border-radius:8px;padding:12px;font-family:monospace;font-size:11px;
+    color:#e2e8f0;margin-top:8px;text-align:left;
+  }
+  .code-line{line-height:1.8}
+  .kw{color:#a78bfa}.fn{color:#67e8f9}.str{color:#86efac}.cm{color:#64748b}
 
-/* 3D Brain container */
-#brain-canvas{width:300px;height:300px;margin:0 auto 20px;position:relative}
+  /* Stats strip */
+  .stats-strip{
+    display:flex;justify-content:center;gap:0;flex-wrap:wrap;
+    margin:0 auto;max-width:800px;padding:0 24px;
+    animation:fadeInUp 0.8s 0.5s ease both;
+  }
+  .stat{
+    flex:1;min-width:160px;text-align:center;padding:24px;
+    border-right:1px solid var(--border);
+  }
+  .stat:last-child{border-right:none}
+  .stat-num{font-size:32px;font-weight:800;background:linear-gradient(135deg,#fff,#a78bfa);
+    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+  .stat-label{font-size:13px;color:rgba(255,255,255,0.4);margin-top:4px}
 
-/* Stats strip */
-.stats{display:flex;gap:48px;justify-content:center;flex-wrap:wrap;padding:20px 40px;border-top:1px solid rgba(255,255,255,.06);border-bottom:1px solid rgba(255,255,255,.06);background:rgba(255,255,255,.02)}
-.stat-item{text-align:center}
-.stat-num{font-size:28px;font-weight:800;background:linear-gradient(135deg,#a5b4fc,#67e8f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-.stat-label{font-size:12px;color:rgba(255,255,255,.4);margin-top:2px}
+  /* Modes section */
+  .section{padding:100px 48px;max-width:1200px;margin:0 auto}
+  .section-tag{
+    display:inline-block;background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.2);
+    color:#a78bfa;padding:4px 14px;border-radius:100px;font-size:12px;font-weight:600;
+    text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;
+  }
+  .section h2{font-size:clamp(28px,4vw,48px);font-weight:800;line-height:1.1;margin-bottom:16px}
+  .section p{color:rgba(255,255,255,0.5);font-size:16px;line-height:1.7;max-width:480px}
 
-/* Modes section */
-.section{padding:100px 40px;max-width:1200px;margin:0 auto}
-.section-label{font-size:12px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:var(--c1);margin-bottom:12px}
-.section-title{font-size:clamp(28px,4vw,44px);font-weight:800;letter-spacing:-1px;margin-bottom:16px}
-.section-sub{color:rgba(255,255,255,.5);font-size:16px;max-width:500px;line-height:1.7;margin-bottom:60px}
+  .modes-grid{
+    display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
+    gap:16px;margin-top:64px;
+  }
+  .mode-card{
+    background:var(--glass);border:1px solid var(--border);
+    border-radius:16px;padding:28px;
+    transition:all 0.3s;cursor:default;
+    position:relative;overflow:hidden;
+  }
+  .mode-card::before{
+    content:'';position:absolute;inset:0;
+    background:linear-gradient(135deg,var(--card-color,rgba(124,58,237,0.08)),transparent);
+    opacity:0;transition:opacity 0.3s;
+  }
+  .mode-card:hover{border-color:rgba(124,58,237,0.3);transform:translateY(-4px)}
+  .mode-card:hover::before{opacity:1}
+  .mode-icon{font-size:32px;margin-bottom:16px}
+  .mode-title{font-size:16px;font-weight:700;margin-bottom:8px}
+  .mode-desc{font-size:14px;color:rgba(255,255,255,0.5);line-height:1.6}
+  .mode-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+  .mode-tag{
+    background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);
+    padding:3px 10px;border-radius:100px;font-size:11px;color:rgba(255,255,255,0.5);
+  }
 
-.modes-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px}
-.mode-card{padding:28px;border-radius:20px;border:1px solid rgba(255,255,255,.08);background:var(--glass);backdrop-filter:blur(20px);transition:.3s;cursor:pointer;position:relative;overflow:hidden}
-.mode-card::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,rgba(99,102,241,.15),transparent 70%);opacity:0;transition:.3s}
-.mode-card:hover{transform:translateY(-4px);border-color:rgba(99,102,241,.4);box-shadow:0 20px 60px rgba(0,0,0,.4)}
-.mode-card:hover::before{opacity:1}
-.mode-icon{font-size:32px;margin-bottom:16px;display:block}
-.mode-title{font-size:17px;font-weight:700;margin-bottom:8px}
-.mode-desc{font-size:14px;color:rgba(255,255,255,.5);line-height:1.6}
-.mode-tag{display:inline-block;margin-top:14px;padding:4px 10px;border-radius:6px;background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);font-size:11px;color:#a5b4fc}
+  /* Feature highlights */
+  .features-row{
+    display:grid;grid-template-columns:1fr 1fr;gap:80px;
+    align-items:center;padding:80px 48px;max-width:1200px;margin:0 auto;
+  }
+  .feature-list{display:flex;flex-direction:column;gap:24px;margin-top:40px}
+  .feature-item{display:flex;gap:16px;align-items:flex-start}
+  .feature-dot{
+    width:40px;height:40px;border-radius:10px;flex-shrink:0;
+    display:flex;align-items:center;justify-content:center;font-size:18px;
+    background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.2);
+  }
+  .feature-title{font-size:15px;font-weight:600;margin-bottom:4px}
+  .feature-desc{font-size:13px;color:rgba(255,255,255,0.45);line-height:1.6}
 
-/* Feature showcase */
-.features-grid{display:grid;grid-template-columns:1fr 1fr;gap:60px;align-items:center;margin-bottom:100px}
-.features-grid.rev{direction:rtl}
-.features-grid.rev>*{direction:ltr}
-.feat-visual{border-radius:20px;border:1px solid rgba(255,255,255,.08);overflow:hidden;background:rgba(255,255,255,.03);backdrop-filter:blur(20px)}
-.chat-mockup{padding:20px}
-.chat-header{display:flex;align-items:center;gap:10px;padding-bottom:16px;border-bottom:1px solid rgba(255,255,255,.08);margin-bottom:16px}
-.chat-avatar{width:32px;height:32px;border-radius:10px;background:linear-gradient(135deg,var(--c1),var(--c2));display:flex;align-items:center;justify-content:center;font-size:14px}
-.chat-name{font-size:14px;font-weight:600}
-.chat-mode{font-size:11px;color:rgba(255,255,255,.4);margin-top:1px}
-.msg{display:flex;gap:10px;margin-bottom:14px;animation:fadeUp .5s ease both}
-.msg.bot{flex-direction:row}
-.msg.user{flex-direction:row-reverse}
-.msg-av{width:28px;height:28px;border-radius:8px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px}
-.msg.bot .msg-av{background:rgba(99,102,241,.2)}
-.msg.user .msg-av{background:rgba(6,182,212,.2)}
-.msg-bubble{padding:10px 14px;border-radius:14px;font-size:13px;line-height:1.6;max-width:85%}
-.msg.bot .msg-bubble{background:rgba(255,255,255,.06);border-radius:14px 14px 14px 2px}
-.msg.user .msg-bubble{background:linear-gradient(135deg,rgba(99,102,241,.4),rgba(139,92,246,.4));border-radius:14px 14px 2px 14px}
-.code-block{background:rgba(0,0,0,.4);border-radius:8px;padding:12px;margin-top:8px;font-family:monospace;font-size:11px;color:#67e8f9;border:1px solid rgba(6,182,212,.2)}
-.typing{display:flex;gap:4px;padding:10px 14px;background:rgba(255,255,255,.06);border-radius:14px 14px 14px 2px;width:fit-content}
-.typing span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4);animation:typingDot 1.2s infinite}
-.typing span:nth-child(2){animation-delay:.2s}
-.typing span:nth-child(3){animation-delay:.4s}
-@keyframes typingDot{0%,80%,100%{transform:translateY(0);opacity:.4}40%{transform:translateY(-5px);opacity:1}}
-@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+  /* 3D floating orbs on feature side */
+  .orb-container{position:relative;height:420px;display:flex;align-items:center;justify-content:center}
+  .orb{
+    position:absolute;border-radius:50%;filter:blur(60px);
+    animation:floatOrb 8s ease-in-out infinite;
+  }
+  .orb1{width:200px;height:200px;background:rgba(124,58,237,0.4);top:10%;left:10%}
+  .orb2{width:160px;height:160px;background:rgba(6,182,212,0.3);bottom:15%;right:10%;animation-delay:-3s}
+  .orb3{width:120px;height:120px;background:rgba(245,158,11,0.2);top:40%;right:20%;animation-delay:-5s}
+  .orb-card{
+    position:relative;z-index:2;width:320px;
+    background:rgba(255,255,255,0.04);
+    border:1px solid rgba(255,255,255,0.1);
+    border-radius:20px;padding:24px;
+    backdrop-filter:blur(20px);
+    box-shadow:0 40px 80px rgba(0,0,0,0.5);
+    transform:rotate(-3deg);
+  }
+  .orb-card2{
+    position:absolute;bottom:-30px;right:-20px;z-index:1;width:260px;
+    background:rgba(255,255,255,0.03);
+    border:1px solid rgba(255,255,255,0.06);
+    border-radius:16px;padding:20px;
+    backdrop-filter:blur(10px);
+    transform:rotate(4deg);
+  }
 
-/* Tech stack */
-.tech-row{display:flex;gap:16px;flex-wrap:wrap;margin-top:40px}
-.tech-pill{padding:8px 16px;border-radius:100px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);font-size:13px;color:rgba(255,255,255,.7);backdrop-filter:blur(10px)}
+  /* Tech stack */
+  .tech-section{
+    padding:80px 48px;text-align:center;max-width:1000px;margin:0 auto;
+  }
+  .tech-grid{
+    display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:40px;
+  }
+  .tech-pill{
+    background:var(--glass);border:1px solid var(--border);
+    padding:10px 20px;border-radius:100px;font-size:14px;font-weight:500;
+    display:flex;align-items:center;gap:8px;transition:all 0.2s;
+  }
+  .tech-pill:hover{border-color:rgba(124,58,237,0.4);background:rgba(124,58,237,0.08)}
+  .tech-dot{width:8px;height:8px;border-radius:50%}
 
-/* How it works */
-.steps{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:24px;counter-reset:step}
-.step-card{padding:28px;border-radius:20px;border:1px solid rgba(255,255,255,.08);background:var(--glass);backdrop-filter:blur(20px);counter-increment:step;position:relative}
-.step-card::before{content:counter(step);position:absolute;top:20px;right:20px;font-size:48px;font-weight:800;opacity:.07;color:#a5b4fc}
-.step-icon{font-size:28px;margin-bottom:16px}
-.step-title{font-size:16px;font-weight:700;margin-bottom:8px}
-.step-desc{font-size:13px;color:rgba(255,255,255,.5);line-height:1.6}
+  /* CTA */
+  .cta-section{
+    padding:120px 24px;text-align:center;position:relative;
+  }
+  .cta-glow{
+    position:absolute;inset:0;
+    background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(124,58,237,0.15),transparent);
+    pointer-events:none;
+  }
+  .cta-section h2{font-size:clamp(32px,5vw,60px);font-weight:800;margin-bottom:16px}
+  .cta-section p{color:rgba(255,255,255,0.5);font-size:18px;margin-bottom:40px}
 
-/* Glow orbs */
-.orb{position:fixed;border-radius:50%;filter:blur(100px);pointer-events:none;z-index:0}
-.orb-1{width:500px;height:500px;background:rgba(99,102,241,.12);top:-100px;left:-150px}
-.orb-2{width:400px;height:400px;background:rgba(6,182,212,.08);bottom:100px;right:-100px}
-.orb-3{width:300px;height:300px;background:rgba(139,92,246,.1);top:50%;left:50%;transform:translate(-50%,-50%)}
+  /* Footer */
+  footer{
+    border-top:1px solid var(--border);padding:32px 48px;
+    display:flex;justify-content:space-between;align-items:center;
+    flex-wrap:wrap;gap:16px;
+  }
+  footer p{font-size:13px;color:rgba(255,255,255,0.3)}
+  footer a{color:rgba(255,255,255,0.4);text-decoration:none;font-size:13px;transition:color 0.2s}
+  footer a:hover{color:#fff}
 
-/* CTA section */
-.cta-section{text-align:center;padding:100px 40px;position:relative}
-.cta-card{max-width:700px;margin:0 auto;padding:60px 40px;border-radius:28px;border:1px solid rgba(255,255,255,.1);background:linear-gradient(135deg,rgba(99,102,241,.1),rgba(139,92,246,.1));backdrop-filter:blur(30px);position:relative;overflow:hidden}
-.cta-card::after{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,rgba(99,102,241,.2),transparent 60%);pointer-events:none}
+  /* Glow line */
+  .glow-line{
+    width:100%;height:1px;
+    background:linear-gradient(90deg,transparent,rgba(124,58,237,0.5),rgba(6,182,212,0.5),transparent);
+    margin:0;
+  }
 
-/* Footer */
-footer{padding:32px 40px;border-top:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between;flex-wrap:gap;gap:16px}
-footer p{font-size:13px;color:rgba(255,255,255,.3)}
-.footer-links{display:flex;gap:20px}
-.footer-links a{font-size:13px;color:rgba(255,255,255,.4);text-decoration:none;transition:.2s}
-.footer-links a:hover{color:#fff}
+  /* Scroll indicator */
+  .scroll-ind{
+    position:absolute;bottom:32px;left:50%;transform:translateX(-50%);
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    color:rgba(255,255,255,0.3);font-size:12px;
+    animation:fadeInUp 1s 1s ease both;
+  }
+  .scroll-line{
+    width:1px;height:40px;
+    background:linear-gradient(to bottom,rgba(124,58,237,0.6),transparent);
+    animation:scrollPulse 2s ease-in-out infinite;
+  }
 
-/* Floating particles */
-.particle{position:fixed;border-radius:50%;pointer-events:none;z-index:1;animation:floatP linear infinite}
-@keyframes floatP{0%{transform:translateY(100vh) rotate(0deg);opacity:0}10%{opacity:1}90%{opacity:.5}100%{transform:translateY(-20px) rotate(720deg);opacity:0}}
+  /* Animations */
+  @keyframes fadeInDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
+  @keyframes float{0%,100%{transform:translateY(0) rotateX(8deg) rotateY(-3deg)}50%{transform:translateY(-16px) rotateX(6deg) rotateY(-2deg)}}
+  @keyframes floatOrb{0%,100%{transform:translate(0,0)}50%{transform:translate(20px,-20px)}}
+  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.8)}}
+  @keyframes typingBounce{0%,80%,100%{transform:translateY(0);opacity:0.4}40%{transform:translateY(-6px);opacity:1}}
+  @keyframes scrollPulse{0%,100%{opacity:0.3}50%{opacity:1}}
+  @keyframes gridMove{from{transform:translateY(0)}to{transform:translateY(60px)}}
 
-@media(max-width:768px){
-  nav{padding:16px 20px}
-  .nav-links{display:none}
-  .section{padding:60px 20px}
-  .features-grid{grid-template-columns:1fr}
-  h1{letter-spacing:-1px}
-  footer{flex-direction:column;text-align:center}
-}
+  @media(max-width:768px){
+    nav{padding:16px 24px}
+    .nav-links{display:none}
+    .features-row{grid-template-columns:1fr;gap:40px}
+    .orb-container{height:280px}
+    footer{flex-direction:column;text-align:center}
+    .section{padding:60px 24px}
+  }
 </style>
 </head>
 <body>
 
 <canvas id="bg-canvas"></canvas>
-<div class="orb orb-1"></div>
-<div class="orb orb-2"></div>
-<div class="orb orb-3"></div>
 
-<div class="wrap">
-<!-- NAV -->
+<div class="content">
+
+<!-- Nav -->
 <nav>
-  <div class="nav-logo">
-    <div class="logo-orb">🧠</div>
+  <div class="logo">
+    <div class="logo-icon">🧠</div>
     PrepAI
   </div>
   <div class="nav-links">
     <a href="#modes">Modes</a>
     <a href="#features">Features</a>
-    <a href="#how">How it works</a>
+    <a href="#tech">Tech Stack</a>
     <a href="https://github.com/Akku980/prep-ai-placement-assistant" target="_blank">GitHub</a>
+    <a href="https://github.com/Akku980/prep-ai-placement-assistant#local-setup" class="nav-cta">Get Started →</a>
   </div>
-  <a href="https://github.com/Akku980/prep-ai-placement-assistant" target="_blank" class="nav-cta">View Source →</a>
 </nav>
 
-<!-- HERO -->
+<!-- Hero -->
 <section class="hero">
-  <div>
-    <div class="hero-badge">
-      <span class="badge-dot"></span>
-      Powered by Llama 3 · Mistral · Groq
+  <div class="hero-badge">
+    <span></span>
+    AI-Powered Placement Preparation Platform
+  </div>
+
+  <h1>
+    Crack placements<br/>
+    with <span class="grad-text">AI that gets it</span>
+  </h1>
+
+  <p>
+    PrepAI is your intelligent placement companion — practice DSA, ace HR rounds,
+    get resume feedback, and simulate real interviews. All in one place.
+  </p>
+
+  <div class="hero-buttons">
+    <a href="https://github.com/Akku980/prep-ai-placement-assistant#local-setup" class="btn-main">
+      🚀 Run Locally
+    </a>
+    <a href="https://github.com/Akku980/prep-ai-placement-assistant" target="_blank" class="btn-outline">
+      ⭐ View on GitHub
+    </a>
+  </div>
+
+  <!-- Chat preview card -->
+  <div class="hero-visual">
+    <div class="chat-card" id="tiltCard">
+      <div class="chat-topbar">
+        <div class="chat-avatar">💻</div>
+        <div>
+          <div class="chat-mode">DSA Mentor Mode</div>
+          <div class="chat-sub">PrepAI · Llama3-8B via Groq</div>
+        </div>
+        <div style="margin-left:auto;display:flex;gap:8px">
+          <div style="width:10px;height:10px;background:#ef4444;border-radius:50%"></div>
+          <div style="width:10px;height:10px;background:#f59e0b;border-radius:50%"></div>
+          <div style="width:10px;height:10px;background:#22c55e;border-radius:50%"></div>
+        </div>
+      </div>
+
+      <div class="msg user">
+        <div class="msg-av user">A</div>
+        <div class="msg-bubble user">Solve two sum problem with optimal approach and give me the time complexity</div>
+      </div>
+
+      <div class="msg">
+        <div class="msg-av ai">🧠</div>
+        <div>
+          <div class="msg-bubble ai">
+            Great problem! The optimal approach uses a <strong>HashMap</strong> for O(n) time complexity instead of the naive O(n²) brute force.<br/><br/>
+            Here's the clean solution:
+            <div class="code-block">
+              <div class="code-line"><kw>def</kw> <fn>twoSum</fn>(nums, target):</div>
+              <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;<cm># hashmap: value → index</cm></div>
+              <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;seen = {}</div>
+              <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;<kw>for</kw> i, num <kw>in</kw> <fn>enumerate</fn>(nums):</div>
+              <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;complement = target - num</div>
+              <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<kw>if</kw> complement <kw>in</kw> seen:</div>
+              <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<kw>return</kw> [seen[complement], i]</div>
+              <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;seen[num] = i</div>
+            </div>
+            <br/>⏱ <strong>Time: O(n)</strong> · 💾 <strong>Space: O(n)</strong>
+          </div>
+        </div>
+      </div>
+
+      <div class="msg">
+        <div class="msg-av ai">🧠</div>
+        <div class="typing"><span></span><span></span><span></span></div>
+      </div>
     </div>
-    <h1>
-      <span class="grad">Your AI</span><br>
-      Placement<br>
-      <span class="grad">Companion</span>
-    </h1>
-    <p class="hero-sub">
-      Practice DSA, crush HR rounds, review your resume, master CS fundamentals — all in one intelligent platform built for engineering students.
-    </p>
-    <div class="hero-btns">
-      <a href="https://github.com/Akku980/prep-ai-placement-assistant" target="_blank" class="btn-glow">Get Started Free →</a>
-      <a href="#features" class="btn-outline">See Features</a>
-    </div>
-    <!-- Animated brain canvas -->
-    <canvas id="brain-canvas" width="300" height="300"></canvas>
+  </div>
+
+  <div class="scroll-ind">
+    <div>Scroll to explore</div>
+    <div class="scroll-line"></div>
   </div>
 </section>
 
-<!-- STATS -->
-<div class="stats">
-  <div class="stat-item"><div class="stat-num">6</div><div class="stat-label">AI Modes</div></div>
-  <div class="stat-item"><div class="stat-num">Free</div><div class="stat-label">Groq API</div></div>
-  <div class="stat-item"><div class="stat-num">PDF</div><div class="stat-label">Q&A Support</div></div>
-  <div class="stat-item"><div class="stat-num">Dark</div><div class="stat-label">Mode Included</div></div>
-  <div class="stat-item"><div class="stat-num">JWT</div><div class="stat-label">Auth + MongoDB</div></div>
+<div class="glow-line"></div>
+
+<!-- Stats -->
+<div style="padding:60px 24px">
+  <div class="stats-strip">
+    <div class="stat"><div class="stat-num">6</div><div class="stat-label">AI Assistant Modes</div></div>
+    <div class="stat"><div class="stat-num">Free</div><div class="stat-label">No paid API needed</div></div>
+    <div class="stat"><div class="stat-num">RAG</div><div class="stat-label">PDF Q&A built-in</div></div>
+    <div class="stat"><div class="stat-num">JWT</div><div class="stat-label">Secure auth system</div></div>
+  </div>
 </div>
 
-<!-- MODES -->
-<section class="section" id="modes">
-  <div class="section-label">AI Modes</div>
-  <div class="section-title">6 Specialized<br>Assistants</div>
-  <p class="section-sub">Each mode has a custom personality and prompting strategy — not just a generic chatbot.</p>
+<!-- Modes -->
+<section id="modes" class="section">
+  <div class="section-tag">AI Modes</div>
+  <h2>One app,<br/><span class="grad-text">six specialists</span></h2>
+  <p>Each mode has a custom system prompt and personality tuned for that specific preparation area.</p>
 
   <div class="modes-grid">
-    <div class="mode-card">
-      <span class="mode-icon">💻</span>
+    <div class="mode-card" style="--card-color:rgba(124,58,237,0.1)">
+      <div class="mode-icon">💻</div>
       <div class="mode-title">DSA Mentor</div>
-      <div class="mode-desc">Walk through coding problems step by step. Get hints, optimized solutions, and complexity analysis explained clearly.</div>
-      <span class="mode-tag">Arrays · Trees · DP · Graphs</span>
+      <div class="mode-desc">Walks through problems step by step — approach, code, complexity, edge cases. Never just gives the answer.</div>
+      <div class="mode-tags">
+        <span class="mode-tag">Arrays</span><span class="mode-tag">Trees</span>
+        <span class="mode-tag">DP</span><span class="mode-tag">Graphs</span>
+      </div>
     </div>
-    <div class="mode-card">
-      <span class="mode-icon">🎤</span>
+    <div class="mode-card" style="--card-color:rgba(6,182,212,0.1)">
+      <div class="mode-icon">🎤</div>
       <div class="mode-title">HR Interviewer</div>
-      <div class="mode-desc">Practice behavioral questions with STAR method coaching. Get real feedback on your communication and presence.</div>
-      <span class="mode-tag">Behavioral · Soft Skills</span>
+      <div class="mode-desc">Asks behavioral questions one at a time, gives constructive feedback using the STAR method framework.</div>
+      <div class="mode-tags">
+        <span class="mode-tag">Behavioral</span><span class="mode-tag">STAR</span>
+        <span class="mode-tag">Communication</span>
+      </div>
     </div>
-    <div class="mode-card">
-      <span class="mode-icon">📄</span>
+    <div class="mode-card" style="--card-color:rgba(245,158,11,0.1)">
+      <div class="mode-icon">📄</div>
       <div class="mode-title">Resume Reviewer</div>
-      <div class="mode-desc">ATS-focused feedback, bullet point rewrites, skills gap analysis. Know exactly what recruiters see.</div>
-      <span class="mode-tag">ATS · Impact · Keywords</span>
+      <div class="mode-desc">Reviews bullet points for ATS compatibility, quantifiable impact, and relevance to SDE / analyst roles.</div>
+      <div class="mode-tags">
+        <span class="mode-tag">ATS</span><span class="mode-tag">Bullets</span>
+        <span class="mode-tag">Impact</span>
+      </div>
     </div>
-    <div class="mode-card">
-      <span class="mode-icon">📚</span>
+    <div class="mode-card" style="--card-color:rgba(34,197,94,0.1)">
+      <div class="mode-icon">📚</div>
       <div class="mode-title">CS Fundamentals</div>
-      <div class="mode-desc">Master OS, DBMS, Computer Networks, OOP and System Design with interview-focused explanations and analogies.</div>
-      <span class="mode-tag">OS · DBMS · CN · OOP</span>
+      <div class="mode-desc">Covers OS, DBMS, Computer Networks, OOP, and basic System Design with interview-focused explanations.</div>
+      <div class="mode-tags">
+        <span class="mode-tag">OS</span><span class="mode-tag">DBMS</span>
+        <span class="mode-tag">CN</span><span class="mode-tag">OOP</span>
+      </div>
     </div>
-    <div class="mode-card">
-      <span class="mode-icon">🎯</span>
-      <div class="mode-title">Mock Interview</div>
-      <div class="mode-desc">Full end-to-end interview simulation. Mixed technical and HR questions, real-time scoring, and detailed feedback.</div>
-      <span class="mode-tag">SDE · Analyst · Consulting</span>
+    <div class="mode-card" style="--card-color:rgba(239,68,68,0.1)">
+      <div class="mode-icon">🎯</div>
+      <div class="mode-title">Mock Interviewer</div>
+      <div class="mode-desc">Conducts full end-to-end mock interviews — scores answers /10, gives detailed feedback, and a final assessment.</div>
+      <div class="mode-tags">
+        <span class="mode-tag">Technical</span><span class="mode-tag">HR Mix</span>
+        <span class="mode-tag">Scoring</span>
+      </div>
     </div>
-    <div class="mode-card">
-      <span class="mode-icon">🤖</span>
+    <div class="mode-card" style="--card-color:rgba(168,85,247,0.1)">
+      <div class="mode-icon">🤖</div>
       <div class="mode-title">General Assistant</div>
-      <div class="mode-desc">Open-ended placement guidance — company research, preparation roadmaps, interview tips for any role.</div>
-      <span class="mode-tag">Open-ended · Flexible</span>
+      <div class="mode-desc">Open-ended placement guidance — company research, roadmaps, study plans, and anything else placement-related.</div>
+      <div class="mode-tags">
+        <span class="mode-tag">Roadmap</span><span class="mode-tag">Strategy</span>
+        <span class="mode-tag">Research</span>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- FEATURES -->
-<section class="section" id="features">
-  <div class="section-label">Features</div>
-  <div class="section-title">Everything you need<br>to crack placements</div>
-
-  <!-- Chat mockup -->
-  <div class="features-grid">
+<!-- Features -->
+<section id="features" style="padding:80px 48px;max-width:1200px;margin:0 auto">
+  <div class="features-row" style="padding:0;gap:80px">
     <div>
-      <h3 style="font-size:24px;font-weight:700;margin-bottom:12px">Real conversations,<br>not just answers</h3>
-      <p style="color:rgba(255,255,255,.5);line-height:1.7;margin-bottom:20px">Markdown rendering, syntax-highlighted code blocks, conversation history, typing indicators — it actually feels like talking to a mentor, not a search engine.</p>
-      <div class="tech-row">
-        <span class="tech-pill">React Markdown</span>
-        <span class="tech-pill">Syntax Highlighting</span>
-        <span class="tech-pill">Auto-scroll</span>
-        <span class="tech-pill">Dark Mode</span>
-      </div>
-    </div>
-    <div class="feat-visual">
-      <div class="chat-mockup">
-        <div class="chat-header">
-          <div class="chat-avatar">💻</div>
-          <div><div class="chat-name">DSA Mentor</div><div class="chat-mode">Solving: Two Sum</div></div>
-        </div>
-        <div class="msg user" style="animation-delay:.1s">
-          <div class="msg-av">👤</div>
-          <div class="msg-bubble">How do I solve Two Sum optimally?</div>
-        </div>
-        <div class="msg bot" style="animation-delay:.4s">
-          <div class="msg-av">🧠</div>
-          <div class="msg-bubble">
-            Use a HashMap for O(n) time.<br><br>
-            For each number, check if <code style="background:rgba(255,255,255,.1);padding:1px 5px;border-radius:4px;font-size:11px">target - num</code> exists in the map.
-            <div class="code-block">def twoSum(nums, target):
-    seen = {}
-    for i, n in enumerate(nums):
-        diff = target - n
-        if diff in seen:
-            return [seen[diff], i]
-        seen[n] = i</div>
-            <div style="margin-top:8px;font-size:12px;color:rgba(255,255,255,.5)">⏱ O(n) time · 🗂 O(n) space</div>
-          </div>
-        </div>
-        <div class="msg bot" style="animation-delay:.8s">
-          <div class="msg-av">🧠</div>
-          <div class="typing"><span></span><span></span><span></span></div>
-        </div>
-      </div>
-    </div>
-  </div>
-
-  <!-- PDF feature -->
-  <div class="features-grid rev" style="margin-top:60px">
-    <div>
-      <h3 style="font-size:24px;font-weight:700;margin-bottom:12px">Ask questions from<br>your own notes</h3>
-      <p style="color:rgba(255,255,255,.5);line-height:1.7;margin-bottom:20px">Upload any PDF — your study notes, resume, company documentation — and ask questions directly from it. Lightweight TF-IDF retrieval, no heavy ML dependencies.</p>
-      <div class="tech-row">
-        <span class="tech-pill">PDF Upload</span>
-        <span class="tech-pill">TF-IDF RAG</span>
-        <span class="tech-pill">PyPDF2</span>
-        <span class="tech-pill">Context Injection</span>
-      </div>
-    </div>
-    <div class="feat-visual" style="padding:28px">
-      <div style="border:1px solid rgba(99,102,241,.3);border-radius:14px;padding:20px;background:rgba(99,102,241,.05);margin-bottom:16px">
-        <div style="display:flex;align-items:center;gap:12px">
-          <div style="width:40px;height:48px;background:linear-gradient(135deg,rgba(99,102,241,.3),rgba(139,92,246,.3));border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px">📄</div>
+      <div class="section-tag">Features</div>
+      <h2>Everything you need<br/><span class="grad-text">to land the job</span></h2>
+      <div class="feature-list">
+        <div class="feature-item">
+          <div class="feature-dot">💬</div>
           <div>
-            <div style="font-size:13px;font-weight:600">OS_Notes_2024.pdf</div>
-            <div style="font-size:11px;color:rgba(255,255,255,.4);margin-top:2px">48 chunks · 3.2 MB</div>
+            <div class="feature-title">Persistent Multi-Session Chat</div>
+            <div class="feature-desc">All your conversations saved to MongoDB. Resume any chat anytime, rename or delete sessions from the sidebar.</div>
           </div>
-          <div style="margin-left:auto;width:8px;height:8px;background:#22c55e;border-radius:50%;box-shadow:0 0 8px #22c55e"></div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot">📄</div>
+          <div>
+            <div class="feature-title">PDF Q&A with RAG</div>
+            <div class="feature-desc">Upload your notes or resume as PDF. Ask questions and get answers grounded in your document using TF-IDF retrieval.</div>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot">🔐</div>
+          <div>
+            <div class="feature-title">JWT Authentication</div>
+            <div class="feature-desc">Secure signup and login with bcrypt password hashing and 7-day JWT tokens. Protected routes on the frontend.</div>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot">🎨</div>
+          <div>
+            <div class="feature-title">Dark / Light Mode</div>
+            <div class="feature-desc">Fully theme-able UI with smooth transitions. System preference detected automatically, toggle anytime.</div>
+          </div>
+        </div>
+        <div class="feature-item">
+          <div class="feature-dot">⚡</div>
+          <div>
+            <div class="feature-title">Free AI — No OpenAI Needed</div>
+            <div class="feature-desc">Uses Groq (Llama3-8B, 14k tokens/min free) with OpenRouter as fallback. Zero cost to run for personal use.</div>
+          </div>
         </div>
       </div>
-      <div class="msg user">
-        <div class="msg-av">👤</div>
-        <div class="msg-bubble" style="font-size:12px">Explain deadlock from my notes</div>
+    </div>
+
+    <div class="orb-container">
+      <div class="orb orb1"></div>
+      <div class="orb orb2"></div>
+      <div class="orb orb3"></div>
+      <div class="orb-card">
+        <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:12px;font-weight:600">PDF DOCUMENT LOADED</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px">📄 my_resume.pdf</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:16px">42 chunks indexed · TF-IDF ready</div>
+        <div style="font-size:13px;color:rgba(255,255,255,0.7);background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.2);padding:10px;border-radius:8px">
+          "Based on your resume, your SRM project section lacks quantifiable impact. Consider adding metrics like 'reduced load time by 40%' or 'served 200+ users'."
+        </div>
+        <div style="display:flex;gap:6px;margin-top:12px">
+          <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite"></div>
+          <div style="font-size:11px;color:#22c55e">Context retrieved · 3 relevant chunks</div>
+        </div>
       </div>
-      <div class="msg bot" style="margin-top:10px">
-        <div class="msg-av">🧠</div>
-        <div class="msg-bubble" style="font-size:12px">Based on your notes: Deadlock occurs when 4 conditions hold simultaneously — Mutual Exclusion, Hold & Wait, No Preemption, and Circular Wait. Your notes mention Banker's Algorithm as the classic avoidance strategy...</div>
+      <div class="orb-card2">
+        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:8px">INTERVIEW SCORE</div>
+        <div style="font-size:28px;font-weight:800;background:linear-gradient(135deg,#a78bfa,#67e8f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">8.5/10</div>
+        <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:4px">Communication · Technical · Confidence</div>
+        <div style="margin-top:10px;display:flex;gap:4px">
+          <div style="height:4px;flex:1;background:#a78bfa;border-radius:2px"></div>
+          <div style="height:4px;flex:1;background:#67e8f9;border-radius:2px"></div>
+          <div style="height:4px;flex:0.8;background:rgba(255,255,255,0.1);border-radius:2px"></div>
+        </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- HOW IT WORKS -->
-<section class="section" id="how">
-  <div class="section-label">Setup</div>
-  <div class="section-title">Running in 3 steps</div>
-  <p class="section-sub">Get a free Groq API key, clone the repo, run docker-compose. That's it.</p>
-
-  <div class="steps">
-    <div class="step-card">
-      <div class="step-icon">🔑</div>
-      <div class="step-title">Get free API key</div>
-      <div class="step-desc">Sign up at console.groq.com — free tier gives 14,400 tokens/minute on Llama 3. No credit card needed.</div>
-    </div>
-    <div class="step-card">
-      <div class="step-icon">📦</div>
-      <div class="step-title">Clone & configure</div>
-      <div class="step-desc">Clone the repo, copy .env.example to .env, paste your Groq API key. One file to edit.</div>
-    </div>
-    <div class="step-card">
-      <div class="step-icon">🚀</div>
-      <div class="step-title">docker-compose up</div>
-      <div class="step-desc">One command starts MongoDB, FastAPI backend, and React frontend. Open localhost and you're in.</div>
-    </div>
-    <div class="step-card">
-      <div class="step-icon">🎓</div>
-      <div class="step-title">Start prepping</div>
-      <div class="step-desc">Pick a mode, start chatting. Upload your notes, practice mock interviews, get your resume reviewed.</div>
-    </div>
-  </div>
-
-  <!-- Tech stack -->
-  <div style="margin-top:60px">
-    <div class="section-label">Tech Stack</div>
-    <div class="tech-row" style="margin-top:16px">
-      <span class="tech-pill">⚛️ React 18</span>
-      <span class="tech-pill">⚡ Vite</span>
-      <span class="tech-pill">🎨 Tailwind CSS</span>
-      <span class="tech-pill">🐍 FastAPI</span>
-      <span class="tech-pill">🍃 MongoDB</span>
-      <span class="tech-pill">🔐 JWT Auth</span>
-      <span class="tech-pill">🤖 Groq / Llama 3</span>
-      <span class="tech-pill">📄 PDF RAG</span>
-      <span class="tech-pill">🐳 Docker</span>
-    </div>
+<!-- Tech Stack -->
+<section id="tech" class="tech-section">
+  <div class="section-tag">Tech Stack</div>
+  <h2 style="font-size:clamp(28px,4vw,40px);font-weight:800;margin-bottom:12px">Built with modern tools</h2>
+  <p style="color:rgba(255,255,255,0.5);font-size:16px">Open source, free to deploy, easy to extend</p>
+  <div class="tech-grid">
+    <div class="tech-pill"><div class="tech-dot" style="background:#61dafb"></div>React 18 + Vite</div>
+    <div class="tech-pill"><div class="tech-dot" style="background:#06b6d4"></div>Tailwind CSS</div>
+    <div class="tech-pill"><div class="tech-dot" style="background:#009688"></div>FastAPI</div>
+    <div class="tech-pill"><div class="tech-dot" style="background:#4db33d"></div>MongoDB + Motor</div>
+    <div class="tech-pill"><div class="tech-dot" style="background:#a78bfa"></div>Groq API (Llama3)</div>
+    <div class="tech-pill"><div class="tech-dot" style="background:#f59e0b"></div>OpenRouter (Mistral)</div>
+    <div class="tech-pill"><div class="tech-dot" style="background:#e11d48"></div>JWT + Bcrypt</div>
+    <div class="tech-pill"><div class="tech-dot" style="background:#2496ed"></div>Docker + Nginx</div>
+    <div class="tech-pill"><div class="tech-dot" style="background:#22c55e"></div>PyPDF2 + TF-IDF RAG</div>
+    <div class="tech-pill"><div class="tech-dot" style="background:#f97316"></div>React Router v6</div>
   </div>
 </section>
 
 <!-- CTA -->
 <section class="cta-section">
-  <div class="cta-card">
-    <div style="font-size:48px;margin-bottom:20px">🚀</div>
-    <h2 style="font-size:36px;font-weight:800;letter-spacing:-1px;margin-bottom:14px">Ready to crack placements?</h2>
-    <p style="color:rgba(255,255,255,.5);font-size:16px;margin-bottom:36px;line-height:1.7">Open source, free to run, built for students.<br>Star the repo, deploy it, make it yours.</p>
-    <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
-      <a href="https://github.com/Akku980/prep-ai-placement-assistant" target="_blank" class="btn-glow">⭐ Star on GitHub</a>
-      <a href="https://github.com/Akku980/prep-ai-placement-assistant#local-setup" target="_blank" class="btn-outline">📖 Setup Guide</a>
-    </div>
+  <div class="cta-glow"></div>
+  <h2>Start your placement prep<br/><span class="grad-text">today — it's free</span></h2>
+  <p>No credit card. No paid API. Just a free Groq key and you're ready.</p>
+  <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
+    <a href="https://github.com/Akku980/prep-ai-placement-assistant#local-setup" class="btn-main" style="font-size:15px">
+      🚀 Setup Guide
+    </a>
+    <a href="https://github.com/Akku980/prep-ai-placement-assistant" target="_blank" class="btn-outline" style="font-size:15px">
+      View Source Code →
+    </a>
+  </div>
+  <div style="margin-top:32px;font-size:13px;color:rgba(255,255,255,0.3)">
+    Built by Aakash · CSE Student, SRM Institute · 2025
   </div>
 </section>
 
-<!-- FOOTER -->
+<div class="glow-line"></div>
+
 <footer>
-  <p>Built by Aakash · CSE Student · SRM Institute</p>
-  <div class="footer-links">
+  <div style="display:flex;align-items:center;gap:8px">
+    <div class="logo-icon" style="width:28px;height:28px;font-size:14px">🧠</div>
+    <span style="font-size:14px;font-weight:600">PrepAI</span>
+    <span style="color:rgba(255,255,255,0.2)">·</span>
+    <p>AI Placement Assistant</p>
+  </div>
+  <div style="display:flex;gap:24px">
     <a href="https://github.com/Akku980/prep-ai-placement-assistant" target="_blank">GitHub</a>
-    <a href="https://github.com/Akku980/prep-ai-placement-assistant/blob/main/README.md" target="_blank">Docs</a>
-    <a href="https://github.com/Akku980" target="_blank">Portfolio</a>
+    <a href="https://github.com/Akku980/prep-ai-placement-assistant#api-endpoints">API Docs</a>
+    <a href="https://github.com/Akku980/prep-ai-placement-assistant#local-setup">Setup</a>
   </div>
 </footer>
-</div><!-- end wrap -->
+
+</div><!-- end content -->
 
 <script>
-// ── Three.js background particles ─────────────────────────────
+// ── Three.js Particle Field ──────────────────────────────────
 const canvas = document.getElementById('bg-canvas')
 const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true })
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 renderer.setSize(window.innerWidth, window.innerHeight)
 
 const scene = new THREE.Scene()
-const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000)
-camera.position.z = 5
+const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
+camera.position.z = 50
 
-// Floating particles
-const particleCount = 120
+// Particle system
+const count = 1800
 const geo = new THREE.BufferGeometry()
-const positions = new Float32Array(particleCount * 3)
-const sizes = new Float32Array(particleCount)
-for (let i = 0; i < particleCount; i++) {
-  positions[i*3]   = (Math.random() - .5) * 20
-  positions[i*3+1] = (Math.random() - .5) * 20
-  positions[i*3+2] = (Math.random() - .5) * 10
-  sizes[i] = Math.random() * 3 + 1
+const positions = new Float32Array(count * 3)
+const colors = new Float32Array(count * 3)
+
+for (let i = 0; i < count; i++) {
+  positions[i * 3]     = (Math.random() - 0.5) * 200
+  positions[i * 3 + 1] = (Math.random() - 0.5) * 200
+  positions[i * 3 + 2] = (Math.random() - 0.5) * 100
+
+  // Purple / cyan / white mix
+  const r = Math.random()
+  if (r < 0.4) { colors[i*3]=0.49; colors[i*3+1]=0.23; colors[i*3+2]=0.93 }       // purple
+  else if (r < 0.7) { colors[i*3]=0.02; colors[i*3+1]=0.71; colors[i*3+2]=0.84 }  // cyan
+  else { colors[i*3]=1; colors[i*3+1]=1; colors[i*3+2]=1 }                          // white
 }
+
 geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-geo.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
+geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
 
 const mat = new THREE.PointsMaterial({
-  color: 0x6366f1, size: 0.05, transparent: true,
-  opacity: 0.6, sizeAttenuation: true
+  size: 0.3, vertexColors: true, transparent: true, opacity: 0.7,
+  blending: THREE.AdditiveBlending, depthWrite: false
 })
 const particles = new THREE.Points(geo, mat)
 scene.add(particles)
 
-// Rotating wireframe sphere (brain stand-in)
-const sphereGeo = new THREE.IcosahedronGeometry(1.2, 2)
-const edges = new THREE.EdgesGeometry(sphereGeo)
-const lineMat = new THREE.LineBasicMaterial({ color: 0x6366f1, transparent: true, opacity: 0.2 })
-const wireframe = new THREE.LineSegments(edges, lineMat)
-scene.add(wireframe)
-
-// Second smaller sphere
-const sphere2Geo = new THREE.IcosahedronGeometry(0.7, 1)
-const edges2 = new THREE.EdgesGeometry(sphere2Geo)
-const lineMat2 = new THREE.LineBasicMaterial({ color: 0x06b6d4, transparent: true, opacity: 0.15 })
-const wireframe2 = new THREE.LineSegments(edges2, lineMat2)
-wireframe2.position.set(3, -1, -2)
-scene.add(wireframe2)
-
-// Torus
-const torusGeo = new THREE.TorusGeometry(0.8, 0.2, 8, 40)
-const torusEdges = new THREE.EdgesGeometry(torusGeo)
-const torusMat = new THREE.LineBasicMaterial({ color: 0x8b5cf6, transparent: true, opacity: 0.15 })
-const torus = new THREE.LineSegments(torusEdges, torusMat)
-torus.position.set(-3.5, 1.5, -1)
-scene.add(torus)
+// Connecting lines (sparse grid)
+const lineMat = new THREE.LineBasicMaterial({
+  color: 0x7c3aed, transparent: true, opacity: 0.05,
+  blending: THREE.AdditiveBlending
+})
+for (let i = 0; i < 20; i++) {
+  const lGeo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3((Math.random()-0.5)*200, (Math.random()-0.5)*200, (Math.random()-0.5)*50),
+    new THREE.Vector3((Math.random()-0.5)*200, (Math.random()-0.5)*200, (Math.random()-0.5)*50),
+  ])
+  scene.add(new THREE.Line(lGeo, lineMat))
+}
 
 // Mouse parallax
-let mouseX = 0, mouseY = 0
-document.addEventListener('mousemove', e => {
-  mouseX = (e.clientX / window.innerWidth - .5) * 2
-  mouseY = (e.clientY / window.innerHeight - .5) * 2
+let mx = 0, my = 0
+window.addEventListener('mousemove', e => {
+  mx = (e.clientX / window.innerWidth - 0.5) * 0.3
+  my = (e.clientY / window.innerHeight - 0.5) * 0.3
 })
 
+// Resize
 window.addEventListener('resize', () => {
   camera.aspect = window.innerWidth / window.innerHeight
   camera.updateProjectionMatrix()
   renderer.setSize(window.innerWidth, window.innerHeight)
 })
 
+// Animate
 let t = 0
 function animate() {
   requestAnimationFrame(animate)
-  t += 0.005
-
-  particles.rotation.y = t * 0.1
-  particles.rotation.x = t * 0.05
-
-  wireframe.rotation.x = t * 0.3
-  wireframe.rotation.y = t * 0.5
-  wireframe2.rotation.y = t * 0.4
-  wireframe2.rotation.z = t * 0.2
-  torus.rotation.x = t * 0.6
-  torus.rotation.y = t * 0.3
-
-  // Parallax camera
-  camera.position.x += (mouseX * 0.5 - camera.position.x) * 0.05
-  camera.position.y += (-mouseY * 0.3 - camera.position.y) * 0.05
-  camera.lookAt(scene.position)
-
+  t += 0.0005
+  particles.rotation.y = t + mx
+  particles.rotation.x = t * 0.3 + my
   renderer.render(scene, camera)
 }
 animate()
 
-// ── Hero canvas — spinning neural network ────────────────────
-const hCanvas = document.getElementById('brain-canvas')
-const ctx = hCanvas.getContext('2d')
-const W = 300, H = 300
-const nodes = []
-const NODE_COUNT = 28
+// ── Card 3D tilt ─────────────────────────────────────────────
+const card = document.getElementById('tiltCard')
+card?.addEventListener('mousemove', e => {
+  const r = card.getBoundingClientRect()
+  const x = (e.clientX - r.left) / r.width - 0.5
+  const y = (e.clientY - r.top) / r.height - 0.5
+  card.style.transform = `rotateX(${-y*12}deg) rotateY(${x*12}deg)`
+})
+card?.addEventListener('mouseleave', () => {
+  card.style.transform = 'rotateX(8deg) rotateY(-3deg)'
+})
 
-for (let i = 0; i < NODE_COUNT; i++) {
-  const angle = (i / NODE_COUNT) * Math.PI * 2
-  const r = 60 + Math.random() * 60
-  nodes.push({
-    x: W/2 + Math.cos(angle) * r,
-    y: H/2 + Math.sin(angle) * r,
-    vx: (Math.random()-.5)*.4,
-    vy: (Math.random()-.5)*.4,
-    r: Math.random() * 3 + 2,
-    pulse: Math.random() * Math.PI * 2
-  })
-}
-
-// Add center node
-nodes.push({ x: W/2, y: H/2, vx: 0, vy: 0, r: 5, pulse: 0, center: true })
-
-let ht = 0
-function drawBrain() {
-  requestAnimationFrame(drawBrain)
-  ctx.clearRect(0, 0, W, H)
-  ht += 0.02
-
-  // Update
-  nodes.forEach(n => {
-    if (n.center) return
-    n.x += n.vx; n.y += n.vy
-    const dx = n.x - W/2, dy = n.y - H/2
-    const dist = Math.sqrt(dx*dx + dy*dy)
-    if (dist > 110 || dist < 40) { n.vx *= -1; n.vy *= -1 }
-    n.pulse += 0.05
-  })
-
-  // Connections
-  for (let i = 0; i < nodes.length; i++) {
-    for (let j = i+1; j < nodes.length; j++) {
-      const dx = nodes[i].x - nodes[j].x
-      const dy = nodes[i].y - nodes[j].y
-      const dist = Math.sqrt(dx*dx + dy*dy)
-      if (dist < 90) {
-        const alpha = (1 - dist/90) * 0.4
-        const grad = ctx.createLinearGradient(nodes[i].x, nodes[i].y, nodes[j].x, nodes[j].y)
-        grad.addColorStop(0, `rgba(99,102,241,${alpha})`)
-        grad.addColorStop(1, `rgba(6,182,212,${alpha})`)
-        ctx.beginPath()
-        ctx.strokeStyle = grad
-        ctx.lineWidth = 1
-        ctx.moveTo(nodes[i].x, nodes[i].y)
-        ctx.lineTo(nodes[j].x, nodes[j].y)
-        ctx.stroke()
-      }
-    }
-  }
-
-  // Nodes
-  nodes.forEach(n => {
-    const glow = n.center ? 1 : (Math.sin(n.pulse + ht) * .5 + .5)
-    const r = n.r * (n.center ? 1 : (0.8 + glow * 0.4))
-
-    ctx.beginPath()
-    const g = ctx.createRadialGradient(n.x, n.y, 0, n.x, n.y, r * 3)
-    if (n.center) {
-      g.addColorStop(0, 'rgba(99,102,241,0.9)')
-      g.addColorStop(1, 'rgba(99,102,241,0)')
-    } else {
-      g.addColorStop(0, `rgba(139,92,246,${0.6 + glow * 0.4})`)
-      g.addColorStop(1, 'rgba(139,92,246,0)')
-    }
-    ctx.fillStyle = g
-    ctx.arc(n.x, n.y, r * 3, 0, Math.PI * 2)
-    ctx.fill()
-
-    ctx.beginPath()
-    ctx.arc(n.x, n.y, r, 0, Math.PI * 2)
-    ctx.fillStyle = n.center ? '#6366f1' : `rgba(167,139,250,${0.7+glow*.3})`
-    ctx.fill()
-  })
-
-  // Rotating ring
-  ctx.beginPath()
-  ctx.arc(W/2, H/2, 115, 0, Math.PI*2)
-  ctx.strokeStyle = 'rgba(99,102,241,0.12)'
-  ctx.lineWidth = 1
-  ctx.setLineDash([4, 8])
-  ctx.stroke()
-  ctx.setLineDash([])
-
-  // Dot on ring
-  const dotX = W/2 + Math.cos(ht) * 115
-  const dotY = H/2 + Math.sin(ht) * 115
-  ctx.beginPath()
-  ctx.arc(dotX, dotY, 4, 0, Math.PI*2)
-  ctx.fillStyle = '#67e8f9'
-  ctx.fill()
-  const dotGlow = ctx.createRadialGradient(dotX, dotY, 0, dotX, dotY, 12)
-  dotGlow.addColorStop(0, 'rgba(103,232,249,0.5)')
-  dotGlow.addColorStop(1, 'rgba(103,232,249,0)')
-  ctx.fillStyle = dotGlow
-  ctx.beginPath()
-  ctx.arc(dotX, dotY, 12, 0, Math.PI*2)
-  ctx.fill()
-}
-drawBrain()
-
-// ── Scroll animations ─────────────────────────────────────────
+// ── Scroll reveal ────────────────────────────────────────────
 const observer = new IntersectionObserver(entries => {
   entries.forEach(e => {
     if (e.isIntersecting) {
@@ -612,29 +755,12 @@ const observer = new IntersectionObserver(entries => {
   })
 }, { threshold: 0.1 })
 
-document.querySelectorAll('.mode-card, .step-card, .feat-visual').forEach(el => {
+document.querySelectorAll('.mode-card, .feature-item, .tech-pill').forEach(el => {
   el.style.opacity = '0'
   el.style.transform = 'translateY(30px)'
-  el.style.transition = 'opacity .6s ease, transform .6s ease'
+  el.style.transition = 'opacity 0.6s ease, transform 0.6s ease'
   observer.observe(el)
 })
-
-// ── Floating particles DOM ────────────────────────────────────
-for (let i = 0; i < 15; i++) {
-  const p = document.createElement('div')
-  p.className = 'particle'
-  const size = Math.random() * 4 + 2
-  p.style.cssText = `
-    width:${size}px; height:${size}px;
-    left:${Math.random()*100}vw;
-    background: ${Math.random()>.5 ? '#6366f1' : '#06b6d4'};
-    border-radius: 50%;
-    animation-duration: ${Math.random()*15+10}s;
-    animation-delay: ${Math.random()*10}s;
-    opacity: 0.3;
-  `
-  document.body.appendChild(p)
-}
 </script>
 </body>
 </html>
