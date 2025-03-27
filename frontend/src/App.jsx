@@ -14,18 +14,17 @@ export default function App() {
     <ThemeProvider>
       <AuthProvider>
         <BrowserRouter>
-          <Toaster position="top-right" toastOptions={{
-            className: 'dark:bg-gray-800 dark:text-white text-sm',
-            duration: 3000
-          }} />
+          <Toaster
+            position="top-right"
+            toastOptions={{
+              style: { background: '#111827', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', fontSize: '14px' },
+              duration: 3000,
+            }}
+          />
           <Routes>
-            <Route path="/login" element={<Login />} />
+            <Route path="/login"  element={<Login />} />
             <Route path="/signup" element={<Signup />} />
-            <Route path="/" element={
-              <ProtectedRoute>
-                <AppLayout />
-              </ProtectedRoute>
-            }>
+            <Route path="/" element={<ProtectedRoute><AppLayout /></ProtectedRoute>}>
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<Dashboard />} />
               <Route path="chat/:chatId" element={<Chat />} />

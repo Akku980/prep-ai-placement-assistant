@@ -8,10 +8,12 @@ def extract_pdf_text(file_bytes: bytes) -> str:
     reader = PyPDF2.PdfReader(io.BytesIO(file_bytes))
     text = ""
     for page in reader.pages:
-        text += page.extract_text() + "\n"
+        t = page.extract_text()
+        if t:
+            text += t + "\n"
     return text.strip()
 
-def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]:
+def chunk_text(text: str, chunk_size: int = 400, overlap: int = 50) -> list:
     words = text.split()
     chunks = []
     i = 0
@@ -19,36 +21,27 @@ def chunk_text(text: str, chunk_size: int = 500, overlap: int = 50) -> list[str]
         chunk = " ".join(words[i:i + chunk_size])
         chunks.append(chunk)
         i += chunk_size - overlap
+        if i >= len(words):
+            break
     return chunks
 
-def simple_tfidf_similarity(query: str, chunks: list[str]) -> list[tuple[int, float]]:
-    """Lightweight TF-IDF similarity — no heavy ML dependencies needed"""
-    def tokenize(text):
-        return re.findall(r'\b\w+\b', text.lower())
+def _tokenize(text: str) -> list:
+    return re.findall(r'\b[a-z]{2,}\b', text.lower())
 
-    query_tokens = tokenize(query)
-    query_freq = Counter(query_tokens)
-
-    scores = []
-    for i, chunk in enumerate(chunks):
-        chunk_tokens = tokenize(chunk)
-        chunk_freq = Counter(chunk_tokens)
-
-        # TF for query terms in chunk
-        score = 0
-        for term in query_tokens:
-            tf = chunk_freq.get(term, 0) / max(len(chunk_tokens), 1)
-            # simple IDF approximation
-            idf = math.log(len(chunks) / (1 + sum(1 for c in chunks if term in c.lower())))
-            score += tf * idf
-
-        scores.append((i, score))
-
-    return sorted(scores, key=lambda x: x[1], reverse=True)
-
-def get_relevant_chunks(query: str, chunks: list[str], top_k: int = 4) -> str:
+def get_relevant_chunks(query: str, chunks: list, top_k: int = 4) -> str:
     if not chunks:
         return ""
-    ranked = simple_tfidf_similarity(query, chunks)
-    top_chunks = [chunks[i] for i, _ in ranked[:top_k]]
-    return "\n\n---\n\n".join(top_chunks)
+    query_tokens = set(_tokenize(query))
+    scored = []
+    for i, chunk in enumerate(chunks):
+        chunk_tokens = _tokenize(chunk)
+        chunk_set = set(chunk_tokens)
+        if not chunk_tokens:
+            scored.append((i, 0.0))
+            continue
+        overlap = len(query_tokens & chunk_set)
+        score = overlap / (math.sqrt(len(query_tokens)) * math.sqrt(len(chunk_set)) + 1e-9)
+        scored.append((i, score))
+    scored.sort(key=lambda x: x[1], reverse=True)
+    top = [chunks[i] for i, _ in scored[:top_k] if scored[0][1] > 0]
+    return "\n\n---\n\n".join(top) if top else ""

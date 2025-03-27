@@ -1,14 +1,16 @@
 import Sidebar from './Sidebar'
 import { Outlet } from 'react-router-dom'
-import { useState } from 'react'
 
 export default function AppLayout() {
-  const [key, setKey] = useState(0)
   return (
-    <div className="flex h-screen overflow-hidden bg-white dark:bg-gray-950">
-      <Sidebar onNewChat={() => setKey(k => k + 1)} />
-      <main className="flex-1 overflow-hidden flex flex-col">
-        <Outlet key={key} />
+    <div className="flex h-screen overflow-hidden bg-[#080B14] relative">
+      {/* Background orbs */}
+      <div className="orb orb-1" />
+      <div className="orb orb-2" />
+      <div className="orb orb-3" />
+      <Sidebar />
+      <main className="flex-1 overflow-hidden flex flex-col relative z-10">
+        <Outlet />
       </main>
     </div>
   )
