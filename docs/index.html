@@ -6,761 +6,236 @@
 <title>PrepAI — AI Placement Assistant</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <style>
-  :root {
-    --accent: #7c3aed;
-    --accent2: #06b6d4;
-    --accent3: #f59e0b;
-    --bg: #030712;
-    --glass: rgba(255,255,255,0.04);
-    --border: rgba(255,255,255,0.08);
-  }
-  *{margin:0;padding:0;box-sizing:border-box}
-  html{scroll-behavior:smooth}
-  body{
-    background:var(--bg);
-    color:#fff;
-    font-family:'Inter',system-ui,sans-serif;
-    overflow-x:hidden;
-  }
-
-  /* Canvas */
-  #bg-canvas{
-    position:fixed;top:0;left:0;width:100%;height:100%;
-    z-index:0;pointer-events:none;
-  }
-
-  /* Layout */
-  .content{position:relative;z-index:10}
-
-  /* Nav */
-  nav{
-    position:fixed;top:0;left:0;right:0;z-index:100;
-    display:flex;align-items:center;justify-content:space-between;
-    padding:16px 48px;
-    background:rgba(3,7,18,0.7);
-    backdrop-filter:blur(20px);
-    border-bottom:1px solid var(--border);
-  }
-  .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
-  .logo-icon{
-    width:36px;height:36px;border-radius:10px;
-    background:linear-gradient(135deg,var(--accent),var(--accent2));
-    display:flex;align-items:center;justify-content:center;font-size:18px;
-  }
-  .nav-links{display:flex;gap:8px}
-  .nav-links a{
-    color:rgba(255,255,255,0.6);text-decoration:none;
-    padding:8px 16px;border-radius:8px;font-size:14px;
-    transition:all 0.2s;
-  }
-  .nav-links a:hover{color:#fff;background:var(--glass)}
-  .nav-cta{
-    background:linear-gradient(135deg,var(--accent),var(--accent2));
-    color:#fff!important;padding:8px 20px!important;border-radius:8px!important;
-    font-weight:600!important;
-  }
-
-  /* Hero */
-  .hero{
-    min-height:100vh;display:flex;flex-direction:column;
-    align-items:center;justify-content:center;
-    text-align:center;padding:120px 24px 80px;
-    position:relative;
-  }
-  .hero-badge{
-    display:inline-flex;align-items:center;gap:8px;
-    background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.3);
-    padding:6px 16px;border-radius:100px;font-size:13px;
-    color:#a78bfa;margin-bottom:32px;
-    animation:fadeInDown 0.8s ease both;
-  }
-  .hero-badge span{width:6px;height:6px;background:#a78bfa;border-radius:50%;animation:pulse 2s infinite}
-  .hero h1{
-    font-size:clamp(42px,8vw,88px);font-weight:800;
-    line-height:1.05;letter-spacing:-2px;
-    margin-bottom:24px;
-    animation:fadeInUp 0.8s 0.1s ease both;
-  }
-  .grad-text{
-    background:linear-gradient(135deg,#fff 0%,#a78bfa 40%,var(--accent2) 80%);
-    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
-  }
-  .hero p{
-    font-size:clamp(16px,2vw,20px);color:rgba(255,255,255,0.5);
-    max-width:580px;line-height:1.7;margin-bottom:48px;
-    animation:fadeInUp 0.8s 0.2s ease both;
-  }
-  .hero-buttons{
-    display:flex;gap:16px;flex-wrap:wrap;justify-content:center;
-    animation:fadeInUp 0.8s 0.3s ease both;
-  }
-  .btn-main{
-    background:linear-gradient(135deg,var(--accent),var(--accent2));
-    color:#fff;padding:14px 32px;border-radius:12px;
-    font-size:16px;font-weight:600;text-decoration:none;
-    border:none;cursor:pointer;transition:all 0.3s;
-    box-shadow:0 0 40px rgba(124,58,237,0.4);
-    display:inline-flex;align-items:center;gap:8px;
-  }
-  .btn-main:hover{transform:translateY(-2px);box-shadow:0 0 60px rgba(124,58,237,0.6)}
-  .btn-outline{
-    background:var(--glass);color:#fff;
-    padding:14px 32px;border-radius:12px;
-    font-size:16px;font-weight:500;text-decoration:none;
-    border:1px solid var(--border);cursor:pointer;
-    transition:all 0.3s;display:inline-flex;align-items:center;gap:8px;
-    backdrop-filter:blur(10px);
-  }
-  .btn-outline:hover{border-color:rgba(124,58,237,0.5);background:rgba(124,58,237,0.1)}
-
-  /* Floating 3D card preview */
-  .hero-visual{
-    margin-top:80px;width:100%;max-width:900px;
-    animation:float 6s ease-in-out infinite, fadeInUp 1s 0.4s ease both;
-    perspective:1000px;
-  }
-  .chat-card{
-    background:rgba(255,255,255,0.03);
-    border:1px solid rgba(255,255,255,0.08);
-    border-radius:20px;padding:24px;
-    backdrop-filter:blur(20px);
-    transform:rotateX(8deg) rotateY(-3deg);
-    transform-style:preserve-3d;
-    transition:transform 0.3s;
-    box-shadow:
-      0 0 0 1px rgba(124,58,237,0.1),
-      0 40px 80px rgba(0,0,0,0.6),
-      0 0 100px rgba(124,58,237,0.1) inset;
-  }
-  .chat-card:hover{transform:rotateX(4deg) rotateY(-1deg)}
-  .chat-topbar{
-    display:flex;align-items:center;gap:12px;
-    padding-bottom:16px;border-bottom:1px solid var(--border);margin-bottom:16px;
-  }
-  .chat-avatar{
-    width:32px;height:32px;border-radius:8px;
-    background:linear-gradient(135deg,var(--accent),var(--accent2));
-    display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;
-  }
-  .chat-mode{font-size:13px;font-weight:600}
-  .chat-sub{font-size:11px;color:rgba(255,255,255,0.4)}
-  .msg{display:flex;gap:10px;margin-bottom:12px;align-items:flex-start}
-  .msg.user{flex-direction:row-reverse}
-  .msg-av{
-    width:28px;height:28px;border-radius:50%;flex-shrink:0;
-    display:flex;align-items:center;justify-content:center;font-size:12px;
-  }
-  .msg-av.ai{background:rgba(124,58,237,0.2);color:#a78bfa}
-  .msg-av.user{background:rgba(6,182,212,0.2);color:#67e8f9}
-  .msg-bubble{
-    max-width:75%;padding:10px 14px;border-radius:12px;font-size:13px;line-height:1.5;text-align:left;
-  }
-  .msg-bubble.ai{
-    background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.2);color:rgba(255,255,255,0.85);
-    border-radius:4px 12px 12px 12px;
-  }
-  .msg-bubble.user{
-    background:linear-gradient(135deg,rgba(124,58,237,0.4),rgba(6,182,212,0.3));
-    color:#fff;border-radius:12px 4px 12px 12px;
-  }
-  .typing{display:flex;gap:4px;align-items:center;padding:10px 14px;
-    background:rgba(124,58,237,0.12);border:1px solid rgba(124,58,237,0.2);
-    border-radius:4px 12px 12px 12px;width:fit-content;
-  }
-  .typing span{width:6px;height:6px;background:#a78bfa;border-radius:50%;animation:typingBounce 1.2s infinite}
-  .typing span:nth-child(2){animation-delay:0.2s}
-  .typing span:nth-child(3){animation-delay:0.4s}
-  .code-block{
-    background:rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.06);
-    border-radius:8px;padding:12px;font-family:monospace;font-size:11px;
-    color:#e2e8f0;margin-top:8px;text-align:left;
-  }
-  .code-line{line-height:1.8}
-  .kw{color:#a78bfa}.fn{color:#67e8f9}.str{color:#86efac}.cm{color:#64748b}
-
-  /* Stats strip */
-  .stats-strip{
-    display:flex;justify-content:center;gap:0;flex-wrap:wrap;
-    margin:0 auto;max-width:800px;padding:0 24px;
-    animation:fadeInUp 0.8s 0.5s ease both;
-  }
-  .stat{
-    flex:1;min-width:160px;text-align:center;padding:24px;
-    border-right:1px solid var(--border);
-  }
-  .stat:last-child{border-right:none}
-  .stat-num{font-size:32px;font-weight:800;background:linear-gradient(135deg,#fff,#a78bfa);
-    -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
-  .stat-label{font-size:13px;color:rgba(255,255,255,0.4);margin-top:4px}
-
-  /* Modes section */
-  .section{padding:100px 48px;max-width:1200px;margin:0 auto}
-  .section-tag{
-    display:inline-block;background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.2);
-    color:#a78bfa;padding:4px 14px;border-radius:100px;font-size:12px;font-weight:600;
-    text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;
-  }
-  .section h2{font-size:clamp(28px,4vw,48px);font-weight:800;line-height:1.1;margin-bottom:16px}
-  .section p{color:rgba(255,255,255,0.5);font-size:16px;line-height:1.7;max-width:480px}
-
-  .modes-grid{
-    display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));
-    gap:16px;margin-top:64px;
-  }
-  .mode-card{
-    background:var(--glass);border:1px solid var(--border);
-    border-radius:16px;padding:28px;
-    transition:all 0.3s;cursor:default;
-    position:relative;overflow:hidden;
-  }
-  .mode-card::before{
-    content:'';position:absolute;inset:0;
-    background:linear-gradient(135deg,var(--card-color,rgba(124,58,237,0.08)),transparent);
-    opacity:0;transition:opacity 0.3s;
-  }
-  .mode-card:hover{border-color:rgba(124,58,237,0.3);transform:translateY(-4px)}
-  .mode-card:hover::before{opacity:1}
-  .mode-icon{font-size:32px;margin-bottom:16px}
-  .mode-title{font-size:16px;font-weight:700;margin-bottom:8px}
-  .mode-desc{font-size:14px;color:rgba(255,255,255,0.5);line-height:1.6}
-  .mode-tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
-  .mode-tag{
-    background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);
-    padding:3px 10px;border-radius:100px;font-size:11px;color:rgba(255,255,255,0.5);
-  }
-
-  /* Feature highlights */
-  .features-row{
-    display:grid;grid-template-columns:1fr 1fr;gap:80px;
-    align-items:center;padding:80px 48px;max-width:1200px;margin:0 auto;
-  }
-  .feature-list{display:flex;flex-direction:column;gap:24px;margin-top:40px}
-  .feature-item{display:flex;gap:16px;align-items:flex-start}
-  .feature-dot{
-    width:40px;height:40px;border-radius:10px;flex-shrink:0;
-    display:flex;align-items:center;justify-content:center;font-size:18px;
-    background:rgba(124,58,237,0.15);border:1px solid rgba(124,58,237,0.2);
-  }
-  .feature-title{font-size:15px;font-weight:600;margin-bottom:4px}
-  .feature-desc{font-size:13px;color:rgba(255,255,255,0.45);line-height:1.6}
-
-  /* 3D floating orbs on feature side */
-  .orb-container{position:relative;height:420px;display:flex;align-items:center;justify-content:center}
-  .orb{
-    position:absolute;border-radius:50%;filter:blur(60px);
-    animation:floatOrb 8s ease-in-out infinite;
-  }
-  .orb1{width:200px;height:200px;background:rgba(124,58,237,0.4);top:10%;left:10%}
-  .orb2{width:160px;height:160px;background:rgba(6,182,212,0.3);bottom:15%;right:10%;animation-delay:-3s}
-  .orb3{width:120px;height:120px;background:rgba(245,158,11,0.2);top:40%;right:20%;animation-delay:-5s}
-  .orb-card{
-    position:relative;z-index:2;width:320px;
-    background:rgba(255,255,255,0.04);
-    border:1px solid rgba(255,255,255,0.1);
-    border-radius:20px;padding:24px;
-    backdrop-filter:blur(20px);
-    box-shadow:0 40px 80px rgba(0,0,0,0.5);
-    transform:rotate(-3deg);
-  }
-  .orb-card2{
-    position:absolute;bottom:-30px;right:-20px;z-index:1;width:260px;
-    background:rgba(255,255,255,0.03);
-    border:1px solid rgba(255,255,255,0.06);
-    border-radius:16px;padding:20px;
-    backdrop-filter:blur(10px);
-    transform:rotate(4deg);
-  }
-
-  /* Tech stack */
-  .tech-section{
-    padding:80px 48px;text-align:center;max-width:1000px;margin:0 auto;
-  }
-  .tech-grid{
-    display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin-top:40px;
-  }
-  .tech-pill{
-    background:var(--glass);border:1px solid var(--border);
-    padding:10px 20px;border-radius:100px;font-size:14px;font-weight:500;
-    display:flex;align-items:center;gap:8px;transition:all 0.2s;
-  }
-  .tech-pill:hover{border-color:rgba(124,58,237,0.4);background:rgba(124,58,237,0.08)}
-  .tech-dot{width:8px;height:8px;border-radius:50%}
-
-  /* CTA */
-  .cta-section{
-    padding:120px 24px;text-align:center;position:relative;
-  }
-  .cta-glow{
-    position:absolute;inset:0;
-    background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(124,58,237,0.15),transparent);
-    pointer-events:none;
-  }
-  .cta-section h2{font-size:clamp(32px,5vw,60px);font-weight:800;margin-bottom:16px}
-  .cta-section p{color:rgba(255,255,255,0.5);font-size:18px;margin-bottom:40px}
-
-  /* Footer */
-  footer{
-    border-top:1px solid var(--border);padding:32px 48px;
-    display:flex;justify-content:space-between;align-items:center;
-    flex-wrap:wrap;gap:16px;
-  }
-  footer p{font-size:13px;color:rgba(255,255,255,0.3)}
-  footer a{color:rgba(255,255,255,0.4);text-decoration:none;font-size:13px;transition:color 0.2s}
-  footer a:hover{color:#fff}
-
-  /* Glow line */
-  .glow-line{
-    width:100%;height:1px;
-    background:linear-gradient(90deg,transparent,rgba(124,58,237,0.5),rgba(6,182,212,0.5),transparent);
-    margin:0;
-  }
-
-  /* Scroll indicator */
-  .scroll-ind{
-    position:absolute;bottom:32px;left:50%;transform:translateX(-50%);
-    display:flex;flex-direction:column;align-items:center;gap:8px;
-    color:rgba(255,255,255,0.3);font-size:12px;
-    animation:fadeInUp 1s 1s ease both;
-  }
-  .scroll-line{
-    width:1px;height:40px;
-    background:linear-gradient(to bottom,rgba(124,58,237,0.6),transparent);
-    animation:scrollPulse 2s ease-in-out infinite;
-  }
-
-  /* Animations */
-  @keyframes fadeInDown{from{opacity:0;transform:translateY(-20px)}to{opacity:1;transform:translateY(0)}}
-  @keyframes fadeInUp{from{opacity:0;transform:translateY(30px)}to{opacity:1;transform:translateY(0)}}
-  @keyframes float{0%,100%{transform:translateY(0) rotateX(8deg) rotateY(-3deg)}50%{transform:translateY(-16px) rotateX(6deg) rotateY(-2deg)}}
-  @keyframes floatOrb{0%,100%{transform:translate(0,0)}50%{transform:translate(20px,-20px)}}
-  @keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.5;transform:scale(0.8)}}
-  @keyframes typingBounce{0%,80%,100%{transform:translateY(0);opacity:0.4}40%{transform:translateY(-6px);opacity:1}}
-  @keyframes scrollPulse{0%,100%{opacity:0.3}50%{opacity:1}}
-  @keyframes gridMove{from{transform:translateY(0)}to{transform:translateY(60px)}}
-
-  @media(max-width:768px){
-    nav{padding:16px 24px}
-    .nav-links{display:none}
-    .features-row{grid-template-columns:1fr;gap:40px}
-    .orb-container{height:280px}
-    footer{flex-direction:column;text-align:center}
-    .section{padding:60px 24px}
-  }
+:root{--v:#7c3aed;--c:#06b6d4;--a:#f59e0b;--bg:#030712}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:#fff;font-family:'Inter',system-ui,sans-serif;overflow-x:hidden}
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+#c{position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;pointer-events:none}
+.z{position:relative;z-index:10}
+nav{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:16px 48px;background:rgba(3,7,18,.7);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.06)}
+.logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
+.logo-i{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--v),#4f46e5);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 20px rgba(124,58,237,.4)}
+.nav-r{display:flex;gap:8px}
+.na{color:rgba(255,255,255,.55);text-decoration:none;padding:7px 14px;border-radius:8px;font-size:14px;transition:all .2s}
+.na:hover{color:#fff;background:rgba(255,255,255,.06)}
+.nc{background:linear-gradient(135deg,var(--v),#4f46e5);color:#fff!important;font-weight:600!important;box-shadow:0 0 20px rgba(124,58,237,.3)}
+.hero{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:120px 24px 80px;position:relative}
+.badge{display:inline-flex;align-items:center;gap:8px;background:rgba(124,58,237,.12);border:1px solid rgba(124,58,237,.25);padding:6px 16px;border-radius:100px;font-size:13px;color:#a78bfa;margin-bottom:32px;animation:fid .8s ease both}
+.dot{width:6px;height:6px;background:#a78bfa;border-radius:50%;animation:pulse 2s infinite}
+h1{font-size:clamp(40px,8vw,86px);font-weight:800;line-height:1.04;letter-spacing:-2px;margin-bottom:24px;animation:fiu .8s .1s ease both}
+.gt{background:linear-gradient(135deg,#fff 0%,#a78bfa 40%,var(--c) 80%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sub{font-size:clamp(15px,2vw,19px);color:rgba(255,255,255,.45);max-width:560px;line-height:1.75;margin-bottom:48px;animation:fiu .8s .2s ease both}
+.btns{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;animation:fiu .8s .3s ease both}
+.bm{background:linear-gradient(135deg,var(--v),#4f46e5);color:#fff;padding:13px 28px;border-radius:12px;font-size:15px;font-weight:600;text-decoration:none;transition:all .3s;box-shadow:0 0 40px rgba(124,58,237,.35);display:inline-flex;align-items:center;gap:8px}
+.bm:hover{transform:translateY(-2px);box-shadow:0 0 60px rgba(124,58,237,.55)}
+.bo{background:rgba(255,255,255,.04);color:#fff;padding:13px 28px;border-radius:12px;font-size:15px;font-weight:500;text-decoration:none;border:1px solid rgba(255,255,255,.1);transition:all .3s;display:inline-flex;align-items:center;gap:8px}
+.bo:hover{border-color:rgba(124,58,237,.5);background:rgba(124,58,237,.08)}
+/* Chat preview */
+.pv{margin-top:72px;width:100%;max-width:860px;animation:float 6s ease-in-out infinite,fiu 1s .4s ease both;perspective:1000px}
+.cc{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:20px;padding:22px;backdrop-filter:blur(20px);transform:rotateX(8deg) rotateY(-3deg);transform-style:preserve-3d;transition:transform .3s;box-shadow:0 0 0 1px rgba(124,58,237,.08),0 40px 80px rgba(0,0,0,.6),0 0 80px rgba(124,58,237,.08) inset}
+.cc:hover{transform:rotateX(4deg) rotateY(-1deg)}
+.tb{display:flex;align-items:center;gap:12px;padding-bottom:14px;border-bottom:1px solid rgba(255,255,255,.06);margin-bottom:14px}
+.av{width:30px;height:30px;border-radius:8px;background:linear-gradient(135deg,var(--v),#4f46e5);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
+.mg{display:flex;gap:9px;margin-bottom:10px;align-items:flex-start}
+.mg.u{flex-direction:row-reverse}
+.ma{width:26px;height:26px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:11px}
+.ma.ai{background:rgba(124,58,237,.2);color:#a78bfa}
+.ma.u{background:rgba(6,182,212,.2);color:#67e8f9}
+.mb{max-width:74%;padding:9px 13px;border-radius:11px;font-size:12.5px;line-height:1.55;text-align:left}
+.mb.ai{background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.18);color:rgba(255,255,255,.82);border-radius:3px 11px 11px 11px}
+.mb.u{background:linear-gradient(135deg,rgba(124,58,237,.35),rgba(6,182,212,.25));color:#fff;border-radius:11px 3px 11px 11px}
+.cb{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.05);border-radius:7px;padding:10px;font-family:monospace;font-size:10.5px;color:#e2e8f0;margin-top:7px}
+.cl{line-height:1.7}
+.kw{color:#a78bfa}.fn{color:#67e8f9}.st{color:#86efac}.cm{color:#64748b}
+.ty{display:flex;gap:4px;align-items:center;padding:9px 13px;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.18);border-radius:3px 11px 11px 11px;width:fit-content}
+.ty span{width:5px;height:5px;background:#a78bfa;border-radius:50%;animation:tb 1.2s infinite}
+.ty span:nth-child(2){animation-delay:.2s}
+.ty span:nth-child(3){animation-delay:.4s}
+/* Stats */
+.stats{display:flex;justify-content:center;gap:0;flex-wrap:wrap;margin:0 auto;max-width:780px;padding:0 24px}
+.st-i{flex:1;min-width:150px;text-align:center;padding:22px;border-right:1px solid rgba(255,255,255,.06)}
+.st-i:last-child{border-right:none}
+.sn{font-size:30px;font-weight:800;background:linear-gradient(135deg,#fff,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.sl{font-size:12px;color:rgba(255,255,255,.35);margin-top:3px}
+/* Modes */
+.sec{padding:90px 48px;max-width:1200px;margin:0 auto}
+.tag{display:inline-block;background:rgba(124,58,237,.1);border:1px solid rgba(124,58,237,.2);color:#a78bfa;padding:4px 14px;border-radius:100px;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:1px;margin-bottom:14px}
+.sec h2{font-size:clamp(26px,4vw,44px);font-weight:800;line-height:1.1;margin-bottom:14px}
+.mg-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:14px;margin-top:56px}
+.mc{background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:16px;padding:26px;transition:all .3s;cursor:default;position:relative;overflow:hidden}
+.mc:hover{border-color:rgba(124,58,237,.3);transform:translateY(-3px);background:rgba(124,58,237,.06)}
+.mi{font-size:30px;margin-bottom:14px}
+.mt{font-size:15px;font-weight:700;margin-bottom:7px}
+.md{font-size:13px;color:rgba(255,255,255,.45);line-height:1.6}
+.mtg{display:flex;gap:5px;flex-wrap:wrap;margin-top:12px}
+.mtg span{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.07);padding:2px 9px;border-radius:100px;font-size:10px;color:rgba(255,255,255,.4)}
+/* Setup section */
+.setup{padding:80px 48px;max-width:900px;margin:0 auto}
+.step-g{display:flex;flex-direction:column;gap:16px;margin-top:40px}
+.step{display:flex;gap:16px;align-items:flex-start;background:rgba(255,255,255,.025);border:1px solid rgba(255,255,255,.07);border-radius:14px;padding:20px}
+.sn2{width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,var(--v),#4f46e5);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:700;flex-shrink:0;box-shadow:0 0 15px rgba(124,58,237,.3)}
+.st2{font-size:14px;font-weight:600;margin-bottom:4px}
+.sd{font-size:13px;color:rgba(255,255,255,.45);line-height:1.6}
+.code{background:rgba(0,0,0,.4);border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:10px 14px;font-family:monospace;font-size:12px;color:#e2e8f0;margin-top:8px;display:block;word-break:break-all}
+/* Tech */
+.tech{padding:70px 48px;text-align:center;max-width:960px;margin:0 auto}
+.tg{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;margin-top:36px}
+.tp{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);padding:9px 18px;border-radius:100px;font-size:13px;font-weight:500;display:flex;align-items:center;gap:7px;transition:all .2s}
+.tp:hover{border-color:rgba(124,58,237,.4);background:rgba(124,58,237,.07)}
+.td{width:7px;height:7px;border-radius:50%}
+/* CTA */
+.cta{padding:100px 24px;text-align:center;position:relative}
+.cta-g{position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 50%,rgba(124,58,237,.12),transparent);pointer-events:none}
+.cta h2{font-size:clamp(28px,5vw,54px);font-weight:800;margin-bottom:14px}
+.cta p{color:rgba(255,255,255,.45);font-size:17px;margin-bottom:36px}
+footer{border-top:1px solid rgba(255,255,255,.06);padding:28px 48px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+footer p{font-size:12px;color:rgba(255,255,255,.25)}
+footer a{color:rgba(255,255,255,.35);text-decoration:none;font-size:12px;transition:color .2s}
+footer a:hover{color:#fff}
+.gl{width:100%;height:1px;background:linear-gradient(90deg,transparent,rgba(124,58,237,.4),rgba(6,182,212,.4),transparent)}
+.sc{position:absolute;bottom:28px;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:6px;color:rgba(255,255,255,.25);font-size:11px;animation:fiu 1s 1s ease both}
+.sl2{width:1px;height:36px;background:linear-gradient(to bottom,rgba(124,58,237,.5),transparent);animation:sp 2s ease-in-out infinite}
+@keyframes fid{from{opacity:0;transform:translateY(-18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes fiu{from{opacity:0;transform:translateY(28px)}to{opacity:1;transform:translateY(0)}}
+@keyframes float{0%,100%{transform:translateY(0) rotateX(8deg) rotateY(-3deg)}50%{transform:translateY(-14px) rotateX(5deg) rotateY(-2deg)}}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.8)}}
+@keyframes tb{0%,80%,100%{transform:translateY(0);opacity:.3}40%{transform:translateY(-5px);opacity:1}}
+@keyframes sp{0%,100%{opacity:.25}50%{opacity:1}}
+@media(max-width:768px){nav{padding:14px 20px}.nav-r .na:not(.nc){display:none}.sec{padding:60px 20px}.setup{padding:60px 20px}.tech{padding:50px 20px}footer{flex-direction:column;text-align:center}}
 </style>
 </head>
 <body>
+<canvas id="c"></canvas>
+<div class="z">
 
-<canvas id="bg-canvas"></canvas>
-
-<div class="content">
-
-<!-- Nav -->
 <nav>
-  <div class="logo">
-    <div class="logo-icon">🧠</div>
-    PrepAI
-  </div>
-  <div class="nav-links">
-    <a href="#modes">Modes</a>
-    <a href="#features">Features</a>
-    <a href="#tech">Tech Stack</a>
-    <a href="https://github.com/Akku980/prep-ai-placement-assistant" target="_blank">GitHub</a>
-    <a href="https://github.com/Akku980/prep-ai-placement-assistant#local-setup" class="nav-cta">Get Started →</a>
+  <div class="logo"><div class="logo-i">🧠</div>PrepAI</div>
+  <div class="nav-r">
+    <a href="#modes" class="na">Modes</a>
+    <a href="#setup" class="na">Setup</a>
+    <a href="#tech" class="na">Stack</a>
+    <a href="https://github.com/Akku980/prep-ai-placement-assistant" target="_blank" class="na">GitHub</a>
+    <a href="https://github.com/Akku980/prep-ai-placement-assistant#local-setup" class="na nc">Run Locally →</a>
   </div>
 </nav>
 
-<!-- Hero -->
 <section class="hero">
-  <div class="hero-badge">
-    <span></span>
-    AI-Powered Placement Preparation Platform
+  <div class="badge"><span class="dot"></span>AI-Powered · Free to Run · Open Source</div>
+  <h1>Crack placements<br/>with <span class="gt">AI that gets it</span></h1>
+  <p class="sub">PrepAI is your intelligent placement companion — practice DSA, ace HR rounds, get resume feedback, and simulate real interviews. Powered by Groq's free Llama3 API.</p>
+  <div class="btns">
+    <a href="https://github.com/Akku980/prep-ai-placement-assistant#local-setup" class="bm">🚀 Run Locally</a>
+    <a href="https://github.com/Akku980/prep-ai-placement-assistant" target="_blank" class="bo">⭐ View Source →</a>
   </div>
 
-  <h1>
-    Crack placements<br/>
-    with <span class="grad-text">AI that gets it</span>
-  </h1>
-
-  <p>
-    PrepAI is your intelligent placement companion — practice DSA, ace HR rounds,
-    get resume feedback, and simulate real interviews. All in one place.
-  </p>
-
-  <div class="hero-buttons">
-    <a href="https://github.com/Akku980/prep-ai-placement-assistant#local-setup" class="btn-main">
-      🚀 Run Locally
-    </a>
-    <a href="https://github.com/Akku980/prep-ai-placement-assistant" target="_blank" class="btn-outline">
-      ⭐ View on GitHub
-    </a>
-  </div>
-
-  <!-- Chat preview card -->
-  <div class="hero-visual">
-    <div class="chat-card" id="tiltCard">
-      <div class="chat-topbar">
-        <div class="chat-avatar">💻</div>
-        <div>
-          <div class="chat-mode">DSA Mentor Mode</div>
-          <div class="chat-sub">PrepAI · Llama3-8B via Groq</div>
-        </div>
-        <div style="margin-left:auto;display:flex;gap:8px">
-          <div style="width:10px;height:10px;background:#ef4444;border-radius:50%"></div>
-          <div style="width:10px;height:10px;background:#f59e0b;border-radius:50%"></div>
-          <div style="width:10px;height:10px;background:#22c55e;border-radius:50%"></div>
-        </div>
-      </div>
-
-      <div class="msg user">
-        <div class="msg-av user">A</div>
-        <div class="msg-bubble user">Solve two sum problem with optimal approach and give me the time complexity</div>
-      </div>
-
-      <div class="msg">
-        <div class="msg-av ai">🧠</div>
-        <div>
-          <div class="msg-bubble ai">
-            Great problem! The optimal approach uses a <strong>HashMap</strong> for O(n) time complexity instead of the naive O(n²) brute force.<br/><br/>
-            Here's the clean solution:
-            <div class="code-block">
-              <div class="code-line"><kw>def</kw> <fn>twoSum</fn>(nums, target):</div>
-              <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;<cm># hashmap: value → index</cm></div>
-              <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;seen = {}</div>
-              <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;<kw>for</kw> i, num <kw>in</kw> <fn>enumerate</fn>(nums):</div>
-              <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;complement = target - num</div>
-              <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<kw>if</kw> complement <kw>in</kw> seen:</div>
-              <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<kw>return</kw> [seen[complement], i]</div>
-              <div class="code-line">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;seen[num] = i</div>
-            </div>
-            <br/>⏱ <strong>Time: O(n)</strong> · 💾 <strong>Space: O(n)</strong>
-          </div>
-        </div>
-      </div>
-
-      <div class="msg">
-        <div class="msg-av ai">🧠</div>
-        <div class="typing"><span></span><span></span><span></span></div>
-      </div>
+  <div class="pv"><div class="cc" id="tc">
+    <div class="tb">
+      <div class="av">💻</div>
+      <div><div style="font-size:13px;font-weight:600">DSA Mentor Mode</div><div style="font-size:11px;color:rgba(255,255,255,.35)">PrepAI · Llama3-8B · Groq</div></div>
+      <div style="margin-left:auto;display:flex;gap:6px"><div style="width:9px;height:9px;background:#ef4444;border-radius:50%"></div><div style="width:9px;height:9px;background:#f59e0b;border-radius:50%"></div><div style="width:9px;height:9px;background:#22c55e;border-radius:50%"></div></div>
     </div>
-  </div>
+    <div class="mg u"><div class="ma u">A</div><div class="mb u">Solve two sum with optimal O(n) time</div></div>
+    <div class="mg"><div class="ma ai">🧠</div><div><div class="mb ai">The optimal approach uses a <strong>HashMap</strong> for O(n) time.<div class="cb"><div class="cl"><span class="kw">def</span> <span class="fn">twoSum</span>(nums, target):</div><div class="cl">&nbsp;&nbsp;seen = {} <span class="cm"># val → index</span></div><div class="cl">&nbsp;&nbsp;<span class="kw">for</span> i, n <span class="kw">in</span> <span class="fn">enumerate</span>(nums):</div><div class="cl">&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">if</span> target-n <span class="kw">in</span> seen: <span class="kw">return</span> [seen[target-n], i]</div><div class="cl">&nbsp;&nbsp;&nbsp;&nbsp;seen[n] = i</div></div>⏱ <strong>O(n)</strong> time · 💾 <strong>O(n)</strong> space</div></div></div>
+    <div class="mg"><div class="ma ai">🧠</div><div class="ty"><span></span><span></span><span></span></div></div>
+  </div></div>
 
-  <div class="scroll-ind">
-    <div>Scroll to explore</div>
-    <div class="scroll-line"></div>
+  <div class="sc"><div>Scroll to explore</div><div class="sl2"></div></div>
+</section>
+
+<div class="gl"></div>
+<div style="padding:54px 24px"><div class="stats">
+  <div class="st-i"><div class="sn">6</div><div class="sl">AI Modes</div></div>
+  <div class="st-i"><div class="sn">Free</div><div class="sl">Groq API</div></div>
+  <div class="st-i"><div class="sn">RAG</div><div class="sl">PDF Q&A</div></div>
+  <div class="st-i"><div class="sn">JWT</div><div class="sl">Auth System</div></div>
+  <div class="st-i"><div class="sn">REST</div><div class="sl">FastAPI Backend</div></div>
+</div></div>
+
+<section id="modes" class="sec">
+  <div class="tag">AI Modes</div>
+  <h2>One platform,<br/><span class="gt">six specialists</span></h2>
+  <p style="color:rgba(255,255,255,.45);font-size:15px">Each mode has a custom AI system prompt tuned for that preparation area.</p>
+  <div class="mg-g">
+    <div class="mc"><div class="mi">💻</div><div class="mt">DSA Mentor</div><div class="md">Step-by-step problem solving — approach, code, complexity, edge cases.</div><div class="mtg"><span>Arrays</span><span>Trees</span><span>DP</span><span>Graphs</span></div></div>
+    <div class="mc"><div class="mi">🎤</div><div class="mt">HR Interviewer</div><div class="md">Behavioral Q&A with STAR method coaching and constructive feedback.</div><div class="mtg"><span>Behavioral</span><span>STAR</span><span>Communication</span></div></div>
+    <div class="mc"><div class="mi">📄</div><div class="mt">Resume Reviewer</div><div class="md">ATS score, weak bullets, stronger rewrites, company-fit analysis.</div><div class="mtg"><span>ATS</span><span>Bullets</span><span>Impact</span></div></div>
+    <div class="mc"><div class="mi">📚</div><div class="mt">CS Tutor</div><div class="md">OS, DBMS, CN, OOP, System Design — interview-focused explanations.</div><div class="mtg"><span>OS</span><span>DBMS</span><span>CN</span><span>OOP</span></div></div>
+    <div class="mc"><div class="mi">🎯</div><div class="mt">Mock Interview</div><div class="md">Full mock with scoring /10, detailed feedback, and final assessment.</div><div class="mtg"><span>Technical</span><span>HR Mix</span><span>Scoring</span></div></div>
+    <div class="mc"><div class="mi">🤖</div><div class="mt">AI Mentor</div><div class="md">Open guidance — company research, roadmaps, study plans.</div><div class="mtg"><span>Roadmap</span><span>Strategy</span><span>Research</span></div></div>
   </div>
 </section>
 
-<div class="glow-line"></div>
-
-<!-- Stats -->
-<div style="padding:60px 24px">
-  <div class="stats-strip">
-    <div class="stat"><div class="stat-num">6</div><div class="stat-label">AI Assistant Modes</div></div>
-    <div class="stat"><div class="stat-num">Free</div><div class="stat-label">No paid API needed</div></div>
-    <div class="stat"><div class="stat-num">RAG</div><div class="stat-label">PDF Q&A built-in</div></div>
-    <div class="stat"><div class="stat-num">JWT</div><div class="stat-label">Secure auth system</div></div>
+<section id="setup" class="setup">
+  <div class="tag">Get Started</div>
+  <h2 style="font-size:clamp(24px,4vw,40px);font-weight:800;margin-bottom:12px">Run it in <span class="gt">3 minutes</span></h2>
+  <p style="color:rgba(255,255,255,.4);font-size:14px">Requires Node.js, Python 3.10+, MongoDB, and a free Groq key</p>
+  <div class="step-g">
+    <div class="step"><div class="sn2">1</div><div><div class="st2">Get a free Groq API key</div><div class="sd">Sign up at <a href="https://console.groq.com" target="_blank" style="color:#a78bfa">console.groq.com</a> — no credit card, 14k tokens/min free on Llama3-8B</div></div></div>
+    <div class="step"><div class="sn2">2</div><div><div class="st2">Clone and configure</div><div class="sd">Clone the repo and set up your environment file</div><code class="code">git clone https://github.com/Akku980/prep-ai-placement-assistant<br/>cd prep-ai-placement-assistant/backend<br/>cp .env.example .env  # add your GROQ_API_KEY and MONGODB_URL</code></div></div>
+    <div class="step"><div class="sn2">3</div><div><div class="st2">Start backend + frontend</div><code class="code"># Terminal 1 — Backend<br/>cd backend && pip install -r requirements.txt<br/>uvicorn main:app --reload<br/><br/># Terminal 2 — Frontend<br/>cd frontend && npm install && npm run dev</code><div class="sd" style="margin-top:8px">Open <strong style="color:#a78bfa">http://localhost:5173</strong> — sign up and start chatting</div></div></div>
+    <div class="step"><div class="sn2">🐳</div><div><div class="st2">Or use Docker (easiest)</div><code class="code">cp backend/.env.example backend/.env  # fill in your keys<br/>docker-compose up --build</code><div class="sd" style="margin-top:8px">App at <strong style="color:#a78bfa">http://localhost</strong> · API at <strong style="color:#a78bfa">http://localhost:8000/docs</strong></div></div></div>
   </div>
+</section>
+
+<section id="tech" class="tech">
+  <div class="tag">Tech Stack</div>
+  <h2 style="font-size:clamp(24px,4vw,38px);font-weight:800;margin-bottom:10px">Built with modern tools</h2>
+  <p style="color:rgba(255,255,255,.4);font-size:15px">Open source · Free AI · Easy to deploy · Easy to extend</p>
+  <div class="tg">
+    <div class="tp"><div class="td" style="background:#61dafb"></div>React 18 + Vite</div>
+    <div class="tp"><div class="td" style="background:#06b6d4"></div>Tailwind CSS</div>
+    <div class="tp"><div class="td" style="background:#e879f9"></div>Framer Motion</div>
+    <div class="tp"><div class="td" style="background:#009688"></div>FastAPI + Python</div>
+    <div class="tp"><div class="td" style="background:#4db33d"></div>MongoDB + Motor</div>
+    <div class="tp"><div class="td" style="background:#a78bfa"></div>Groq (Llama3-8B)</div>
+    <div class="tp"><div class="td" style="background:#f59e0b"></div>OpenRouter fallback</div>
+    <div class="tp"><div class="td" style="background:#e11d48"></div>JWT + Bcrypt</div>
+    <div class="tp"><div class="td" style="background:#2496ed"></div>Docker + Nginx</div>
+    <div class="tp"><div class="td" style="background:#22c55e"></div>PyPDF2 + TF-IDF RAG</div>
+  </div>
+</section>
+
+<section class="cta">
+  <div class="cta-g"></div>
+  <h2>Start prepping <span class="gt">today — free</span></h2>
+  <p>No credit card. No paid API. Just a free Groq key and 3 minutes.</p>
+  <div style="display:flex;gap:14px;justify-content:center;flex-wrap:wrap">
+    <a href="https://github.com/Akku980/prep-ai-placement-assistant#local-setup" class="bm" style="font-size:14px">🚀 Setup Guide</a>
+    <a href="https://github.com/Akku980/prep-ai-placement-assistant" target="_blank" class="bo" style="font-size:14px">View Source →</a>
+  </div>
+  <div style="margin-top:28px;font-size:12px;color:rgba(255,255,255,.25)">Built by Aakash · CSE Student, SRM Institute · 2025</div>
+</section>
+
+<div class="gl"></div>
+<footer>
+  <div style="display:flex;align-items:center;gap:8px"><div class="logo-i" style="width:26px;height:26px;font-size:12px">🧠</div><span style="font-size:13px;font-weight:600">PrepAI</span><span style="color:rgba(255,255,255,.15)">·</span><p>AI Placement Assistant</p></div>
+  <div style="display:flex;gap:20px"><a href="https://github.com/Akku980/prep-ai-placement-assistant" target="_blank">GitHub</a><a href="https://github.com/Akku980/prep-ai-placement-assistant#api-endpoints">API Docs</a><a href="#setup">Setup</a></div>
+</footer>
 </div>
 
-<!-- Modes -->
-<section id="modes" class="section">
-  <div class="section-tag">AI Modes</div>
-  <h2>One app,<br/><span class="grad-text">six specialists</span></h2>
-  <p>Each mode has a custom system prompt and personality tuned for that specific preparation area.</p>
-
-  <div class="modes-grid">
-    <div class="mode-card" style="--card-color:rgba(124,58,237,0.1)">
-      <div class="mode-icon">💻</div>
-      <div class="mode-title">DSA Mentor</div>
-      <div class="mode-desc">Walks through problems step by step — approach, code, complexity, edge cases. Never just gives the answer.</div>
-      <div class="mode-tags">
-        <span class="mode-tag">Arrays</span><span class="mode-tag">Trees</span>
-        <span class="mode-tag">DP</span><span class="mode-tag">Graphs</span>
-      </div>
-    </div>
-    <div class="mode-card" style="--card-color:rgba(6,182,212,0.1)">
-      <div class="mode-icon">🎤</div>
-      <div class="mode-title">HR Interviewer</div>
-      <div class="mode-desc">Asks behavioral questions one at a time, gives constructive feedback using the STAR method framework.</div>
-      <div class="mode-tags">
-        <span class="mode-tag">Behavioral</span><span class="mode-tag">STAR</span>
-        <span class="mode-tag">Communication</span>
-      </div>
-    </div>
-    <div class="mode-card" style="--card-color:rgba(245,158,11,0.1)">
-      <div class="mode-icon">📄</div>
-      <div class="mode-title">Resume Reviewer</div>
-      <div class="mode-desc">Reviews bullet points for ATS compatibility, quantifiable impact, and relevance to SDE / analyst roles.</div>
-      <div class="mode-tags">
-        <span class="mode-tag">ATS</span><span class="mode-tag">Bullets</span>
-        <span class="mode-tag">Impact</span>
-      </div>
-    </div>
-    <div class="mode-card" style="--card-color:rgba(34,197,94,0.1)">
-      <div class="mode-icon">📚</div>
-      <div class="mode-title">CS Fundamentals</div>
-      <div class="mode-desc">Covers OS, DBMS, Computer Networks, OOP, and basic System Design with interview-focused explanations.</div>
-      <div class="mode-tags">
-        <span class="mode-tag">OS</span><span class="mode-tag">DBMS</span>
-        <span class="mode-tag">CN</span><span class="mode-tag">OOP</span>
-      </div>
-    </div>
-    <div class="mode-card" style="--card-color:rgba(239,68,68,0.1)">
-      <div class="mode-icon">🎯</div>
-      <div class="mode-title">Mock Interviewer</div>
-      <div class="mode-desc">Conducts full end-to-end mock interviews — scores answers /10, gives detailed feedback, and a final assessment.</div>
-      <div class="mode-tags">
-        <span class="mode-tag">Technical</span><span class="mode-tag">HR Mix</span>
-        <span class="mode-tag">Scoring</span>
-      </div>
-    </div>
-    <div class="mode-card" style="--card-color:rgba(168,85,247,0.1)">
-      <div class="mode-icon">🤖</div>
-      <div class="mode-title">General Assistant</div>
-      <div class="mode-desc">Open-ended placement guidance — company research, roadmaps, study plans, and anything else placement-related.</div>
-      <div class="mode-tags">
-        <span class="mode-tag">Roadmap</span><span class="mode-tag">Strategy</span>
-        <span class="mode-tag">Research</span>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Features -->
-<section id="features" style="padding:80px 48px;max-width:1200px;margin:0 auto">
-  <div class="features-row" style="padding:0;gap:80px">
-    <div>
-      <div class="section-tag">Features</div>
-      <h2>Everything you need<br/><span class="grad-text">to land the job</span></h2>
-      <div class="feature-list">
-        <div class="feature-item">
-          <div class="feature-dot">💬</div>
-          <div>
-            <div class="feature-title">Persistent Multi-Session Chat</div>
-            <div class="feature-desc">All your conversations saved to MongoDB. Resume any chat anytime, rename or delete sessions from the sidebar.</div>
-          </div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-dot">📄</div>
-          <div>
-            <div class="feature-title">PDF Q&A with RAG</div>
-            <div class="feature-desc">Upload your notes or resume as PDF. Ask questions and get answers grounded in your document using TF-IDF retrieval.</div>
-          </div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-dot">🔐</div>
-          <div>
-            <div class="feature-title">JWT Authentication</div>
-            <div class="feature-desc">Secure signup and login with bcrypt password hashing and 7-day JWT tokens. Protected routes on the frontend.</div>
-          </div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-dot">🎨</div>
-          <div>
-            <div class="feature-title">Dark / Light Mode</div>
-            <div class="feature-desc">Fully theme-able UI with smooth transitions. System preference detected automatically, toggle anytime.</div>
-          </div>
-        </div>
-        <div class="feature-item">
-          <div class="feature-dot">⚡</div>
-          <div>
-            <div class="feature-title">Free AI — No OpenAI Needed</div>
-            <div class="feature-desc">Uses Groq (Llama3-8B, 14k tokens/min free) with OpenRouter as fallback. Zero cost to run for personal use.</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="orb-container">
-      <div class="orb orb1"></div>
-      <div class="orb orb2"></div>
-      <div class="orb orb3"></div>
-      <div class="orb-card">
-        <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:12px;font-weight:600">PDF DOCUMENT LOADED</div>
-        <div style="font-size:14px;font-weight:600;margin-bottom:4px">📄 my_resume.pdf</div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.4);margin-bottom:16px">42 chunks indexed · TF-IDF ready</div>
-        <div style="font-size:13px;color:rgba(255,255,255,0.7);background:rgba(124,58,237,0.1);border:1px solid rgba(124,58,237,0.2);padding:10px;border-radius:8px">
-          "Based on your resume, your SRM project section lacks quantifiable impact. Consider adding metrics like 'reduced load time by 40%' or 'served 200+ users'."
-        </div>
-        <div style="display:flex;gap:6px;margin-top:12px">
-          <div style="width:8px;height:8px;border-radius:50%;background:#22c55e;animation:pulse 2s infinite"></div>
-          <div style="font-size:11px;color:#22c55e">Context retrieved · 3 relevant chunks</div>
-        </div>
-      </div>
-      <div class="orb-card2">
-        <div style="font-size:11px;color:rgba(255,255,255,0.4);margin-bottom:8px">INTERVIEW SCORE</div>
-        <div style="font-size:28px;font-weight:800;background:linear-gradient(135deg,#a78bfa,#67e8f9);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text">8.5/10</div>
-        <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:4px">Communication · Technical · Confidence</div>
-        <div style="margin-top:10px;display:flex;gap:4px">
-          <div style="height:4px;flex:1;background:#a78bfa;border-radius:2px"></div>
-          <div style="height:4px;flex:1;background:#67e8f9;border-radius:2px"></div>
-          <div style="height:4px;flex:0.8;background:rgba(255,255,255,0.1);border-radius:2px"></div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<!-- Tech Stack -->
-<section id="tech" class="tech-section">
-  <div class="section-tag">Tech Stack</div>
-  <h2 style="font-size:clamp(28px,4vw,40px);font-weight:800;margin-bottom:12px">Built with modern tools</h2>
-  <p style="color:rgba(255,255,255,0.5);font-size:16px">Open source, free to deploy, easy to extend</p>
-  <div class="tech-grid">
-    <div class="tech-pill"><div class="tech-dot" style="background:#61dafb"></div>React 18 + Vite</div>
-    <div class="tech-pill"><div class="tech-dot" style="background:#06b6d4"></div>Tailwind CSS</div>
-    <div class="tech-pill"><div class="tech-dot" style="background:#009688"></div>FastAPI</div>
-    <div class="tech-pill"><div class="tech-dot" style="background:#4db33d"></div>MongoDB + Motor</div>
-    <div class="tech-pill"><div class="tech-dot" style="background:#a78bfa"></div>Groq API (Llama3)</div>
-    <div class="tech-pill"><div class="tech-dot" style="background:#f59e0b"></div>OpenRouter (Mistral)</div>
-    <div class="tech-pill"><div class="tech-dot" style="background:#e11d48"></div>JWT + Bcrypt</div>
-    <div class="tech-pill"><div class="tech-dot" style="background:#2496ed"></div>Docker + Nginx</div>
-    <div class="tech-pill"><div class="tech-dot" style="background:#22c55e"></div>PyPDF2 + TF-IDF RAG</div>
-    <div class="tech-pill"><div class="tech-dot" style="background:#f97316"></div>React Router v6</div>
-  </div>
-</section>
-
-<!-- CTA -->
-<section class="cta-section">
-  <div class="cta-glow"></div>
-  <h2>Start your placement prep<br/><span class="grad-text">today — it's free</span></h2>
-  <p>No credit card. No paid API. Just a free Groq key and you're ready.</p>
-  <div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">
-    <a href="https://github.com/Akku980/prep-ai-placement-assistant#local-setup" class="btn-main" style="font-size:15px">
-      🚀 Setup Guide
-    </a>
-    <a href="https://github.com/Akku980/prep-ai-placement-assistant" target="_blank" class="btn-outline" style="font-size:15px">
-      View Source Code →
-    </a>
-  </div>
-  <div style="margin-top:32px;font-size:13px;color:rgba(255,255,255,0.3)">
-    Built by Aakash · CSE Student, SRM Institute · 2025
-  </div>
-</section>
-
-<div class="glow-line"></div>
-
-<footer>
-  <div style="display:flex;align-items:center;gap:8px">
-    <div class="logo-icon" style="width:28px;height:28px;font-size:14px">🧠</div>
-    <span style="font-size:14px;font-weight:600">PrepAI</span>
-    <span style="color:rgba(255,255,255,0.2)">·</span>
-    <p>AI Placement Assistant</p>
-  </div>
-  <div style="display:flex;gap:24px">
-    <a href="https://github.com/Akku980/prep-ai-placement-assistant" target="_blank">GitHub</a>
-    <a href="https://github.com/Akku980/prep-ai-placement-assistant#api-endpoints">API Docs</a>
-    <a href="https://github.com/Akku980/prep-ai-placement-assistant#local-setup">Setup</a>
-  </div>
-</footer>
-
-</div><!-- end content -->
-
 <script>
-// ── Three.js Particle Field ──────────────────────────────────
-const canvas = document.getElementById('bg-canvas')
-const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true })
-renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
-renderer.setSize(window.innerWidth, window.innerHeight)
-
-const scene = new THREE.Scene()
-const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000)
-camera.position.z = 50
-
-// Particle system
-const count = 1800
-const geo = new THREE.BufferGeometry()
-const positions = new Float32Array(count * 3)
-const colors = new Float32Array(count * 3)
-
-for (let i = 0; i < count; i++) {
-  positions[i * 3]     = (Math.random() - 0.5) * 200
-  positions[i * 3 + 1] = (Math.random() - 0.5) * 200
-  positions[i * 3 + 2] = (Math.random() - 0.5) * 100
-
-  // Purple / cyan / white mix
-  const r = Math.random()
-  if (r < 0.4) { colors[i*3]=0.49; colors[i*3+1]=0.23; colors[i*3+2]=0.93 }       // purple
-  else if (r < 0.7) { colors[i*3]=0.02; colors[i*3+1]=0.71; colors[i*3+2]=0.84 }  // cyan
-  else { colors[i*3]=1; colors[i*3+1]=1; colors[i*3+2]=1 }                          // white
-}
-
-geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
-geo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
-
-const mat = new THREE.PointsMaterial({
-  size: 0.3, vertexColors: true, transparent: true, opacity: 0.7,
-  blending: THREE.AdditiveBlending, depthWrite: false
-})
-const particles = new THREE.Points(geo, mat)
-scene.add(particles)
-
-// Connecting lines (sparse grid)
-const lineMat = new THREE.LineBasicMaterial({
-  color: 0x7c3aed, transparent: true, opacity: 0.05,
-  blending: THREE.AdditiveBlending
-})
-for (let i = 0; i < 20; i++) {
-  const lGeo = new THREE.BufferGeometry().setFromPoints([
-    new THREE.Vector3((Math.random()-0.5)*200, (Math.random()-0.5)*200, (Math.random()-0.5)*50),
-    new THREE.Vector3((Math.random()-0.5)*200, (Math.random()-0.5)*200, (Math.random()-0.5)*50),
-  ])
-  scene.add(new THREE.Line(lGeo, lineMat))
-}
-
-// Mouse parallax
-let mx = 0, my = 0
-window.addEventListener('mousemove', e => {
-  mx = (e.clientX / window.innerWidth - 0.5) * 0.3
-  my = (e.clientY / window.innerHeight - 0.5) * 0.3
-})
-
-// Resize
-window.addEventListener('resize', () => {
-  camera.aspect = window.innerWidth / window.innerHeight
-  camera.updateProjectionMatrix()
-  renderer.setSize(window.innerWidth, window.innerHeight)
-})
-
-// Animate
-let t = 0
-function animate() {
-  requestAnimationFrame(animate)
-  t += 0.0005
-  particles.rotation.y = t + mx
-  particles.rotation.x = t * 0.3 + my
-  renderer.render(scene, camera)
-}
-animate()
-
-// ── Card 3D tilt ─────────────────────────────────────────────
-const card = document.getElementById('tiltCard')
-card?.addEventListener('mousemove', e => {
-  const r = card.getBoundingClientRect()
-  const x = (e.clientX - r.left) / r.width - 0.5
-  const y = (e.clientY - r.top) / r.height - 0.5
-  card.style.transform = `rotateX(${-y*12}deg) rotateY(${x*12}deg)`
-})
-card?.addEventListener('mouseleave', () => {
-  card.style.transform = 'rotateX(8deg) rotateY(-3deg)'
-})
-
-// ── Scroll reveal ────────────────────────────────────────────
-const observer = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if (e.isIntersecting) {
-      e.target.style.opacity = '1'
-      e.target.style.transform = 'translateY(0)'
-    }
-  })
-}, { threshold: 0.1 })
-
-document.querySelectorAll('.mode-card, .feature-item, .tech-pill').forEach(el => {
-  el.style.opacity = '0'
-  el.style.transform = 'translateY(30px)'
-  el.style.transition = 'opacity 0.6s ease, transform 0.6s ease'
-  observer.observe(el)
-})
+const canvas=document.getElementById('c')
+const R=new THREE.WebGLRenderer({canvas,alpha:true,antialias:true})
+R.setPixelRatio(Math.min(devicePixelRatio,2))
+R.setSize(innerWidth,innerHeight)
+const S=new THREE.Scene(),C=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,1000)
+C.position.z=50
+const N=2000,G=new THREE.BufferGeometry(),P=new Float32Array(N*3),Cl=new Float32Array(N*3)
+for(let i=0;i<N;i++){P[i*3]=(Math.random()-.5)*220;P[i*3+1]=(Math.random()-.5)*220;P[i*3+2]=(Math.random()-.5)*100;const r=Math.random();if(r<.4){Cl[i*3]=.49;Cl[i*3+1]=.23;Cl[i*3+2]=.93}else if(r<.7){Cl[i*3]=.02;Cl[i*3+1]=.71;Cl[i*3+2]=.84}else{Cl[i*3]=1;Cl[i*3+1]=1;Cl[i*3+2]=1}}
+G.setAttribute('position',new THREE.BufferAttribute(P,3));G.setAttribute('color',new THREE.BufferAttribute(Cl,3))
+const M=new THREE.PointsMaterial({size:.28,vertexColors:true,transparent:true,opacity:.65,blending:THREE.AdditiveBlending,depthWrite:false})
+const pts=new THREE.Points(G,M);S.add(pts)
+let mx=0,my=0
+addEventListener('mousemove',e=>{mx=(e.clientX/innerWidth-.5)*.25;my=(e.clientY/innerHeight-.5)*.25})
+addEventListener('resize',()=>{C.aspect=innerWidth/innerHeight;C.updateProjectionMatrix();R.setSize(innerWidth,innerHeight)})
+const card=document.getElementById('tc')
+card?.addEventListener('mousemove',e=>{const r=card.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;card.style.transform=`rotateX(${-y*12}deg) rotateY(${x*12}deg)`})
+card?.addEventListener('mouseleave',()=>{card.style.transform='rotateX(8deg) rotateY(-3deg)'})
+let t=0
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.style.opacity='1';e.target.style.transform='translateY(0)'}}),{threshold:.1})
+document.querySelectorAll('.mc,.tp,.step').forEach(el=>{el.style.opacity='0';el.style.transform='translateY(24px)';el.style.transition='opacity .5s ease,transform .5s ease';io.observe(el)})
+;(function a(){requestAnimationFrame(a);t+=.0004;pts.rotation.y=t+mx;pts.rotation.x=t*.3+my;R.render(S,C)})()
 </script>
 </body>
 </html>
