@@ -5,8 +5,10 @@ const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
-    const u = localStorage.getItem('user')
-    return u ? JSON.parse(u) : null
+    try {
+      const u = localStorage.getItem('user')
+      return u ? JSON.parse(u) : null
+    } catch { return null }
   })
   const [loading, setLoading] = useState(true)
 
@@ -14,8 +16,11 @@ export function AuthProvider({ children }) {
     const token = localStorage.getItem('token')
     if (token) {
       api.get('/auth/me')
-        .then(res => setUser(res.data))
-        .catch(() => logout())
+        .then(res => { setUser(res.data); localStorage.setItem('user', JSON.stringify(res.data)) })
+        .catch(() => {
+          // Backend offline — keep local user if exists
+          if (!localStorage.getItem('user')) logout()
+        })
         .finally(() => setLoading(false))
     } else {
       setLoading(false)

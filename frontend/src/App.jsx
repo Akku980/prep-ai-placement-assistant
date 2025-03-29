@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { AuthProvider } from './context/AuthContext'
 import { ThemeProvider } from './context/ThemeContext'
@@ -13,11 +13,16 @@ export default function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <BrowserRouter>
+        <HashRouter>
           <Toaster
             position="top-right"
             toastOptions={{
-              style: { background: '#111827', color: '#fff', border: '1px solid rgba(255,255,255,0.1)', fontSize: '14px' },
+              style: {
+                background: '#111827',
+                color: '#fff',
+                border: '1px solid rgba(255,255,255,0.1)',
+                fontSize: '14px'
+              },
               duration: 3000,
             }}
           />
@@ -30,7 +35,7 @@ export default function App() {
               <Route path="chat/:chatId" element={<Chat />} />
             </Route>
           </Routes>
-        </BrowserRouter>
+        </HashRouter>
       </AuthProvider>
     </ThemeProvider>
   )
