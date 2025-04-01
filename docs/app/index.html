@@ -142,6 +142,7 @@ body::after{
   position:fixed;inset:0;z-index:50;
   display:flex;align-items:center;justify-content:center;
   opacity:0;pointer-events:none;
+  transition:opacity 0.5s ease;
 }
 
 /* Floating panels background */
@@ -160,7 +161,7 @@ body::after{
 
 /* Login card */
 .login-card{
-  position:relative;z-index:52;
+  position:relative;z-index:200;
   width:420px;
   background:rgba(2,8,20,0.7);
   border:1px solid rgba(0,212,255,0.2);
@@ -588,10 +589,10 @@ body::after{
 
 <!-- LOGIN -->
 <div id="login">
-  <div class="panel-float pf1"><div class="pf-inner">NEURAL.SYNC<br>PATTERN.MATCH<br>AI.READY<br>SECURE.CONN</div></div>
-  <div class="panel-float pf2"><div class="pf-inner">DSA.CORE<br>HR.MODULE<br>RESUME.AI<br>CS.TUTOR</div></div>
-  <div class="panel-float pf3"><div class="pf-inner">GROQ.API<br>LLAMA.3.3<br>70B.MODEL<br>STREAMING</div></div>
-  <div class="panel-float pf4"><div class="pf-inner">JWT.AUTH<br>ENCRYPTED<br>SESSION<br>SECURE</div></div>
+  <div class="panel-float pf1" style="pointer-events:none"><div class="pf-inner">NEURAL.SYNC<br>PATTERN.MATCH<br>AI.READY<br>SECURE.CONN</div></div>
+  <div class="panel-float pf2" style="pointer-events:none"><div class="pf-inner">DSA.CORE<br>HR.MODULE<br>RESUME.AI<br>CS.TUTOR</div></div>
+  <div class="panel-float pf3" style="pointer-events:none"><div class="pf-inner">GROQ.API<br>LLAMA.3.3<br>70B.MODEL<br>STREAMING</div></div>
+  <div class="panel-float pf4" style="pointer-events:none"><div class="pf-inner">JWT.AUTH<br>ENCRYPTED<br>SESSION<br>SECURE</div></div>
 
   <div class="login-card" id="lcard">
     <div class="card-scan"></div>
@@ -954,7 +955,8 @@ render()
 // ════════════════════════════════════════════════
 // GSAP INTRO SEQUENCE
 // ════════════════════════════════════════════════
-const tl=gsap.timeline({onComplete:showLoginScreen})
+let _fallbackTimer=null
+const tl=gsap.timeline({onComplete:()=>{if(_fallbackTimer)clearTimeout(_fallbackTimer);showLoginScreen()}})
 
 // Phase 1: horizontal sweep
 tl.set('#hsweep',{opacity:0,scaleX:0})
@@ -996,8 +998,29 @@ tl.to({},{duration:0.8}) // pause at 100%
   .to('#intro',{opacity:0,duration:0.8,ease:'power2.inOut'})
   .set('#intro',{display:'none'})
 
+function showLoginScreenDirect(){
+  const login=document.getElementById('login')
+  login.style.opacity='1'
+  login.style.pointerEvents='auto'
+  login.style.display='flex'
+  document.getElementById('lcard').style.pointerEvents='auto'
+  document.querySelectorAll('.panel-float').forEach(p=>{
+    p.style.opacity='1'
+  })
+  // Still add mouse tilt
+  login.addEventListener('mousemove',e=>{
+    const rx=(e.clientY/innerHeight-.5)*-8
+    const ry=(e.clientX/innerWidth-.5)*8
+    if(typeof gsap!=='undefined') gsap.to('#lcard',{rotationX:rx,rotationY:ry,duration:0.5,ease:'power2.out',transformPerspective:1200})
+  })
+  login.addEventListener('mouseleave',()=>{
+    if(typeof gsap!=='undefined') gsap.to('#lcard',{rotationX:0,rotationY:0,duration:0.8,ease:'power3.out'})
+  })
+}
+
 function showLoginScreen(){
   gsap.set('#login',{opacity:0,display:'flex',pointerEvents:'auto'})
+  document.getElementById('lcard').style.pointerEvents='auto'
   
   // Animate floating panels
   gsap.fromTo('.pf1',{opacity:0,x:-30,y:20},{opacity:1,x:0,y:0,duration:1.2,ease:'power3.out'})
@@ -1134,9 +1157,18 @@ function doLogout(){
 // Boot check
 window.addEventListener('load',()=>{
   const sess=S('ppas')
+  // Safety fallback: if GSAP doesn't fire in 5s, show login directly
+  _fallbackTimer=setTimeout(()=>{
+    if(document.getElementById('login').style.opacity!=='1'){
+      document.getElementById('intro').style.display='none'
+      showLoginScreenDirect()
+    }
+  },5000)
+
   if(sess){
     // Skip intro, go straight to login (faster on return visits)
     gsap.to('#intro',{opacity:0,duration:0.3,onComplete:()=>{
+      clearTimeout(_fallbackTimer)
       document.getElementById('intro').style.display='none'
       showLoginScreen()
     }})
