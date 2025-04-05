@@ -36,3 +36,4 @@ class DocResponse(BaseModel):
     filename: str
     uploaded_at: datetime
     chunk_count: int
+

@@ -2,17 +2,20 @@
 __pycache__/
 *.pyc
 *.pyo
-.env
-*.egg-info/
-dist/
 .venv/
 venv/
+*.egg-info/
 
 # Node
 node_modules/
 frontend/dist/
-frontend/node_modules/
+frontend/build/
 *.local
+
+# Env — NEVER commit real secrets
+backend/.env
+frontend/.env
+.env
 
 # OS
 .DS_Store
@@ -23,6 +26,6 @@ Thumbs.db
 .idea/
 *.swp
 
-# Uploads
+# Misc
 uploads/
 *.pdf

@@ -1,195 +1,145 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { useNavigate, useOutletContext } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import api from '../api/client'
-import toast from 'react-hot-toast'
-import {
-  MessageSquare, FileText, Upload, ChevronRight,
-  Trash2, Brain, Zap, Target, TrendingUp, Clock
-} from 'lucide-react'
+import toast from '../utils/toast'
 
 const MODES = [
-  { id:'dsa',    label:'DSA Mentor',     emoji:'💻', desc:'Algos & data structures', color:'from-violet-500/20 to-indigo-500/20', border:'border-violet-500/20 hover:border-violet-500/50' },
-  { id:'hr',     label:'HR Interview',   emoji:'🎤', desc:'Behavioral questions',    color:'from-pink-500/20 to-rose-500/20',   border:'border-pink-500/20 hover:border-pink-500/50' },
-  { id:'resume', label:'Resume Review',  emoji:'📄', desc:'ATS & bullet points',     color:'from-amber-500/20 to-orange-500/20',border:'border-amber-500/20 hover:border-amber-500/50' },
-  { id:'cs',     label:'CS Tutor',       emoji:'📚', desc:'OS, DBMS, CN, OOP',       color:'from-emerald-500/20 to-teal-500/20',border:'border-emerald-500/20 hover:border-emerald-500/50' },
-  { id:'mock',   label:'Mock Interview', emoji:'🎯', desc:'Full simulation',         color:'from-cyan-500/20 to-blue-500/20',   border:'border-cyan-500/20 hover:border-cyan-500/50' },
-  { id:'general',label:'AI Mentor',      emoji:'🤖', desc:'General guidance',        color:'from-slate-500/20 to-gray-500/20',  border:'border-slate-500/20 hover:border-slate-500/50' },
+  { id:'dsa',    emoji:'💻', title:'DSA Mentor',      desc:'Algorithms, data structures, optimal solutions' },
+  { id:'hr',     emoji:'🎤', title:'HR Interview',     desc:'Behavioral prep, STAR method, communication' },
+  { id:'resume', emoji:'📄', title:'Resume Review',    desc:'ATS optimization, bullet rewrites' },
+  { id:'cs',     emoji:'📚', title:'CS Tutor',         desc:'OS, DBMS, CN, OOP — interview-ready answers' },
+  { id:'mock',   emoji:'🎯', title:'Mock Interview',   desc:'Full simulation with scoring and feedback' },
+  { id:'general',emoji:'🤖', title:'AI Mentor',        desc:'Roadmaps, company research, placement strategy' },
 ]
-
-const fadeUp = (delay=0) => ({
-  initial:{ opacity:0, y:20 },
-  animate:{ opacity:1, y:0 },
-  transition:{ duration:0.4, delay }
-})
 
 export default function Dashboard() {
   const { user } = useAuth()
   const navigate = useNavigate()
-  const [stats, setStats] = useState(null)
+  const { chats = [], setChats, loadChats } = useOutletContext() || {}
   const [docs, setDocs] = useState([])
+  const [stats, setStats] = useState(null)
   const [uploading, setUploading] = useState(false)
 
   useEffect(() => { loadStats(); loadDocs() }, [])
 
   const loadStats = async () => {
-    try { const res = await api.get('/dashboard/stats'); setStats(res.data) } catch {}
+    try { const { data } = await api.get('/dashboard/stats'); setStats(data) } catch {}
   }
+
   const loadDocs = async () => {
-    try { const res = await api.get('/docs/'); setDocs(res.data) } catch {}
+    try { const { data } = await api.get('/docs/'); setDocs(data) } catch {}
   }
 
   const startChat = async (mode) => {
     try {
-      const res = await api.post('/chats/', { title: 'New Chat', mode })
-      navigate(`/chat/${res.data.id}`)
-    } catch { toast.error('Failed to start session') }
+      const { data } = await api.post('/chats/', { title: 'New Chat', mode })
+      setChats?.(c => [data, ...c])
+      navigate(`/chat/${data.id}`)
+    } catch { toast('Failed to start session', 'error') }
   }
 
   const uploadPdf = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
-    const fd = new FormData()
-    fd.append('file', file)
+    const file = e.target.files[0]; if (!file) return
+    e.target.value = ''
+    const fd = new FormData(); fd.append('file', file)
     setUploading(true)
     try {
-      await api.post('/docs/upload', fd)
-      toast.success(`${file.name} uploaded!`)
+      await api.post('/docs/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      toast(`${file.name} uploaded`, 'success')
       loadDocs()
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Upload failed')
-    } finally { setUploading(false); e.target.value = '' }
+      toast(err.response?.data?.detail || 'Upload failed', 'error')
+    } finally { setUploading(false) }
   }
 
-  const deleteDoc = async (id) => {
-    await api.delete(`/docs/${id}`)
-    setDocs(d => d.filter(doc => doc.id !== id))
-    toast.success('Document deleted')
+  const deletePdf = async (id) => {
+    try { await api.delete(`/docs/${id}`); setDocs(d => d.filter(x => x.id !== id)) }
+    catch { toast('Delete failed', 'error') }
   }
 
-  const hour = new Date().getHours()
-  const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
+  const h = new Date().getHours()
+  const greeting = h < 12 ? 'morning' : h < 17 ? 'afternoon' : 'evening'
 
   return (
-    <div className="overflow-y-auto h-full">
-      <div className="max-w-5xl mx-auto px-6 py-8 relative z-10">
+    <div className="dashboard">
+      <div className="dash-greeting">
+        <h1>Good <span className="dash-grad">{greeting}</span>, <span className="dash-grad">{user?.name?.split(' ')[0]}</span> 👋</h1>
+        <p>Your AI placement preparation hub</p>
+      </div>
 
-        {/* Welcome */}
-        <motion.div {...fadeUp(0)} className="mb-8">
-          <h1 className="text-3xl font-bold">
-            {greeting}, <span className="gradient-text">{user?.name?.split(' ')[0]}</span> 👋
-          </h1>
-          <p className="text-white/40 text-sm mt-1">Ready to crack your placements?</p>
-        </motion.div>
-
-        {/* Stats */}
-        <motion.div {...fadeUp(0.05)} className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
-          {[
-            { icon: MessageSquare, label: 'Total Chats', value: stats?.total_chats ?? '—', color: 'text-violet-400', bg: 'bg-violet-500/10' },
-            { icon: FileText,      label: 'Documents',   value: stats?.total_docs  ?? '—', color: 'text-emerald-400', bg: 'bg-emerald-500/10' },
-            { icon: Target,        label: 'Sessions',    value: stats?.total_chats ?? '—', color: 'text-cyan-400',    bg: 'bg-cyan-500/10' },
-            { icon: TrendingUp,    label: 'Progress',    value: '↑',                        color: 'text-amber-400',   bg: 'bg-amber-500/10' },
-          ].map(({ icon: Icon, label, value, color, bg }) => (
-            <div key={label} className="card flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-xl ${bg} flex items-center justify-center flex-shrink-0`}>
-                <Icon className={`w-4 h-4 ${color}`} />
-              </div>
-              <div>
-                <p className="text-xl font-bold text-white">{value}</p>
-                <p className="text-xs text-white/40">{label}</p>
-              </div>
-            </div>
-          ))}
-        </motion.div>
-
-        {/* Mode cards */}
-        <motion.div {...fadeUp(0.1)} className="mb-8">
-          <div className="flex items-center gap-2 mb-4">
-            <Zap className="w-4 h-4 text-violet-400" />
-            <h2 className="font-semibold text-white/80">Start a session</h2>
+      <div className="stats-grid">
+        {[
+          { icon:'💬', num: stats?.total_chats ?? chats.length, label:'Chats' },
+          { icon:'📄', num: stats?.total_docs  ?? docs.length,  label:'Documents' },
+          { icon:'⚡', num: stats?.total_msgs  ?? '—',          label:'Messages' },
+          { icon:'🎯', num: 6,                                   label:'AI Modes' },
+        ].map(s => (
+          <div key={s.label} className="stat-card">
+            <div className="stat-card-icon">{s.icon}</div>
+            <div className="stat-card-num">{s.num}</div>
+            <div className="stat-card-label">{s.label}</div>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {MODES.map((m, i) => (
-              <motion.button
-                key={m.id}
-                initial={{ opacity:0, y:16 }} animate={{ opacity:1, y:0 }}
-                transition={{ delay: 0.1 + i*0.05 }}
-                onClick={() => startChat(m.id)}
-                className={`p-4 rounded-2xl border bg-gradient-to-br ${m.color} ${m.border} text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-lg group`}>
-                <div className="text-2xl mb-2">{m.emoji}</div>
-                <div className="font-semibold text-sm text-white/90 mb-0.5">{m.label}</div>
-                <div className="text-xs text-white/40">{m.desc}</div>
-              </motion.button>
+        ))}
+      </div>
+
+      <div className="section-label">Start a session</div>
+      <div className="modes-grid">
+        {MODES.map(m => (
+          <div key={m.id} className="mode-card" onClick={() => startChat(m.id)}>
+            <div className="mode-card-emoji">{m.emoji}</div>
+            <div className="mode-card-title">{m.title}</div>
+            <div className="mode-card-desc">{m.desc}</div>
+          </div>
+        ))}
+      </div>
+
+      <div className="pdf-row-header">
+        <span className="section-label" style={{ marginBottom:0 }}>Documents</span>
+        <label className="upload-btn">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"/>
+          </svg>
+          {uploading ? 'Uploading…' : 'Upload PDF'}
+          <input type="file" accept=".pdf" style={{ display:'none' }} onChange={uploadPdf} disabled={uploading} />
+        </label>
+      </div>
+
+      <div className="pdf-list">
+        {docs.length === 0
+          ? <div className="no-pdf">No documents yet — upload your resume or study notes</div>
+          : docs.map(d => (
+            <div key={d.id} className="pdf-item">
+              <div className="pdf-item-icon">📄</div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <div className="pdf-item-name">{d.filename}</div>
+                <div className="pdf-item-meta">{d.chunk_count} chunks · {new Date(d.uploaded_at).toLocaleDateString()}</div>
+              </div>
+              <button className="pdf-del" onClick={() => deletePdf(d.id)} title="Delete">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <polyline points="3,6 5,6 21,6"/>
+                  <path d="M19,6l-1,14a2,2,0,0,1-2,2H8a2,2,0,0,1-2-2L5,6m3,0V4a1,1,0,0,1,1-1h4a1,1,0,0,1,1,1v2"/>
+                </svg>
+              </button>
+            </div>
+          ))
+        }
+      </div>
+
+      {chats.length > 0 && (
+        <>
+          <div className="section-label">Recent chats</div>
+          <div className="recent-list">
+            {chats.slice(0,5).map(c => (
+              <div key={c.id} className="recent-row" onClick={() => navigate(`/chat/${c.id}`)}>
+                <span style={{ fontSize:15 }}>{['💻','🎤','📄','📚','🎯','🤖'][['dsa','hr','resume','cs','mock','general'].indexOf(c.mode)] || '🤖'}</span>
+                <span className="recent-row-title">{c.title}</span>
+                <svg width="12" height="12" style={{ color:'var(--text3)', flexShrink:0 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 18l6-6-6-6"/></svg>
+              </div>
             ))}
           </div>
-        </motion.div>
-
-        {/* PDF section */}
-        <motion.div {...fadeUp(0.2)} className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <FileText className="w-4 h-4 text-emerald-400" />
-              <h2 className="font-semibold text-white/80">PDF Documents</h2>
-              <span className="text-xs text-white/30 bg-white/[0.05] px-2 py-0.5 rounded-full">{docs.length}</span>
-            </div>
-            <label className="btn-primary flex items-center gap-1.5 cursor-pointer text-xs px-3 py-2">
-              <Upload className="w-3 h-3" />
-              {uploading ? 'Uploading...' : 'Upload PDF'}
-              <input type="file" accept=".pdf" className="hidden" onChange={uploadPdf} disabled={uploading} />
-            </label>
-          </div>
-
-          {docs.length === 0 ? (
-            <div className="card text-center py-10">
-              <FileText className="w-8 h-8 mx-auto mb-3 text-white/20" />
-              <p className="text-sm text-white/40">No documents yet</p>
-              <p className="text-xs text-white/20 mt-1">Upload your resume or study notes to ask questions from them</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {docs.map(doc => (
-                <div key={doc.id} className="card flex items-center justify-between py-3 px-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <div className="w-8 h-8 rounded-xl bg-emerald-500/10 flex items-center justify-center flex-shrink-0">
-                      <FileText className="w-4 h-4 text-emerald-400" />
-                    </div>
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-white/90 truncate">{doc.filename}</p>
-                      <p className="text-xs text-white/30">{doc.chunk_count} chunks · {new Date(doc.uploaded_at).toLocaleDateString()}</p>
-                    </div>
-                  </div>
-                  <button onClick={() => deleteDoc(doc.id)} className="p-1.5 hover:text-red-400 transition-colors text-white/30">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </motion.div>
-
-        {/* Recent chats */}
-        {stats?.recent_chats?.length > 0 && (
-          <motion.div {...fadeUp(0.25)}>
-            <div className="flex items-center gap-2 mb-4">
-              <Clock className="w-4 h-4 text-cyan-400" />
-              <h2 className="font-semibold text-white/80">Recent Chats</h2>
-            </div>
-            <div className="space-y-1.5">
-              {stats.recent_chats.map(chat => (
-                <button key={chat.id} onClick={() => navigate(`/chat/${chat.id}`)}
-                  className="w-full card flex items-center justify-between py-3 px-4 hover:border-violet-500/30 hover:bg-violet-500/5 transition-all duration-200 text-left group">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Brain className="w-4 h-4 text-violet-400 flex-shrink-0" />
-                    <span className="text-sm text-white/70 group-hover:text-white/90 transition-colors truncate">{chat.title}</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-white/20 group-hover:text-white/50 flex-shrink-0 transition-colors" />
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </div>
+        </>
+      )}
     </div>
   )
 }

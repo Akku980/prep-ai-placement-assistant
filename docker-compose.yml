@@ -1,36 +1,63 @@
 version: '3.8'
 
 services:
+
   mongo:
     image: mongo:7
-    container_name: prepai-mongo
+    container_name: prepai_mongo
     restart: unless-stopped
-    volumes:
-      - mongo_data:/data/db
     ports:
       - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: prepai
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping').ok"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   backend:
-    build: ./backend
-    container_name: prepai-backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    container_name: prepai_backend
     restart: unless-stopped
     env_file: ./backend/.env
     environment:
-      - MONGODB_URL=mongodb://mongo:27017
-      - ALLOWED_ORIGINS=http://localhost
+      MONGODB_URL: mongodb://mongo:27017
+      ALLOWED_ORIGINS: "http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173"
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - backend_cache:/app/__pycache__
     depends_on:
-      - mongo
+      mongo:
+        condition: service_healthy
+    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload --reload-dir /app
 
   frontend:
-    build: ./frontend
-    container_name: prepai-frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: prepai_frontend
     restart: unless-stopped
+    environment:
+      # No VITE_API_URL — uses Vite proxy /api → backend:8000
+      NODE_ENV: development
     ports:
-      - "80:80"
+      - "5173:5173"
+    volumes:
+      - ./frontend:/app
+      - frontend_modules:/app/node_modules
     depends_on:
       - backend
+    command: npm run dev -- --host 0.0.0.0 --port 5173
 
 volumes:
   mongo_data:
+  backend_cache:
+  frontend_modules:

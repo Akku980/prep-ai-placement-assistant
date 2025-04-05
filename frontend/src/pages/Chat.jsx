@@ -1,151 +1,241 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useParams } from 'react-router-dom'
-import { motion, AnimatePresence } from 'framer-motion'
+import { useParams, useOutletContext } from 'react-router-dom'
 import api from '../api/client'
-import ChatMessage from '../components/chat/ChatMessage'
-import ChatInput from '../components/chat/ChatInput'
-import TypingIndicator from '../components/chat/TypingIndicator'
-import toast from 'react-hot-toast'
-import { Zap } from 'lucide-react'
+import { useAuth } from '../context/AuthContext'
+import toast from '../utils/toast'
+import ReactMarkdown from 'react-markdown'
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 
-const MODE_META = {
-  dsa:    { label:'DSA Mentor',       emoji:'💻', color:'text-violet-400', bg:'bg-violet-500/10' },
-  hr:     { label:'HR Interview',     emoji:'🎤', color:'text-pink-400',   bg:'bg-pink-500/10' },
-  resume: { label:'Resume Review',    emoji:'📄', color:'text-amber-400',  bg:'bg-amber-500/10' },
-  cs:     { label:'CS Tutor',         emoji:'📚', color:'text-emerald-400',bg:'bg-emerald-500/10' },
-  mock:   { label:'Mock Interview',   emoji:'🎯', color:'text-cyan-400',   bg:'bg-cyan-500/10' },
-  general:{ label:'AI Mentor',        emoji:'🤖', color:'text-slate-400',  bg:'bg-slate-500/10' },
+const MODES = {
+  general: { label:'AI Mentor',      emoji:'🤖' },
+  dsa:     { label:'DSA Mentor',     emoji:'💻' },
+  hr:      { label:'HR Interview',   emoji:'🎤' },
+  resume:  { label:'Resume Review',  emoji:'📄' },
+  cs:      { label:'CS Tutor',       emoji:'📚' },
+  mock:    { label:'Mock Interview', emoji:'🎯' },
 }
 
 const STARTERS = {
-  dsa:    ['Explain binary search with code','What is dynamic programming?','Solve two sum optimally','Explain BFS vs DFS'],
-  hr:     ['Tell me about yourself','Why should we hire you?','What are your strengths & weaknesses?','Describe a challenge you faced'],
-  resume: ['Review my resume bullet points','How to improve ATS score?','What skills should I add?','How to quantify my achievements?'],
-  cs:     ['Explain OS deadlock','DBMS normalization types','TCP vs UDP difference','Explain OOPS pillars'],
-  mock:   ['Start a mock interview for SDE','Interview for data analyst role','Technical round simulation','Ask me system design'],
-  general:['How to prepare for placements?','Best DSA resources for beginners','How to crack TCS NQT?','Roadmap for software engineer'],
+  dsa:     ['Explain binary search with code','Solve Two Sum optimally','What is dynamic programming?','BFS vs DFS comparison'],
+  hr:      ['Start a mock HR interview','Help me with "Tell me about yourself"','What is the STAR method?','Why should we hire you?'],
+  resume:  ['Review my resume bullets','How to improve ATS score?','Skills to add for SDE roles','How to quantify achievements'],
+  cs:      ['Explain OS deadlock','DBMS normalization types','TCP vs UDP difference','OOP pillars with examples'],
+  mock:    ['Start full mock interview','SDE intern simulation','Data analyst mock','System design round'],
+  general: ['How to crack TCS NQT?','SDE placement roadmap','Best DSA resources','How to prepare for Zoho?'],
+}
+
+function CopyButton({ text }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <button className="copy-btn" onClick={() => {
+      navigator.clipboard.writeText(text)
+      setCopied(true); setTimeout(() => setCopied(false), 2000)
+    }}>{copied ? 'Copied!' : 'Copy'}</button>
+  )
+}
+
+function Message({ msg, userInitial }) {
+  const isUser = msg.role === 'user'
+  return (
+    <div className={`msg-row ${msg.role}`}>
+      <div className={`msg-av ${msg.role}`}>
+        {isUser ? userInitial : '🧠'}
+      </div>
+      <div className={`msg-bubble ${msg.role}`}>
+        {isUser ? (
+          <p style={{ whiteSpace:'pre-wrap' }}>{msg.content}</p>
+        ) : (
+          <ReactMarkdown
+            components={{
+              code({ inline, className, children, ...props }) {
+                const match = /language-(\w+)/.exec(className || '')
+                if (!inline && match) {
+                  return (
+                    <div style={{ position:'relative' }}>
+                      <SyntaxHighlighter style={oneDark} language={match[1]}
+                        customStyle={{ margin:0, borderRadius:10, fontSize:12 }} {...props}>
+                        {String(children).replace(/\n$/, '')}
+                      </SyntaxHighlighter>
+                      <CopyButton text={String(children)} />
+                    </div>
+                  )
+                }
+                return <code className={className} {...props}>{children}</code>
+              }
+            }}>
+            {msg.content}
+          </ReactMarkdown>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export default function Chat() {
   const { chatId } = useParams()
+  const { user } = useAuth()
+  const { setChats } = useOutletContext() || {}
   const [chat, setChat] = useState(null)
   const [messages, setMessages] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [initialLoad, setInitialLoad] = useState(true)
   const [docs, setDocs] = useState([])
   const [selectedDoc, setSelectedDoc] = useState(null)
+  const [busy, setBusy] = useState(false)
+  const [input, setInput] = useState('')
   const bottomRef = useRef(null)
+  const textRef = useRef(null)
 
   useEffect(() => {
-    if (chatId) { loadData() }
+    if (chatId) { loadChat(); loadDocs() }
   }, [chatId])
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: messages.length > 1 ? 'smooth' : 'instant' })
-  }, [messages, loading])
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  }, [messages, busy])
 
-  const loadData = async () => {
-    setInitialLoad(true)
+  const loadChat = async () => {
     try {
-      const [msgsRes, chatsRes, docsRes] = await Promise.all([
+      const [msgsRes, chatsRes] = await Promise.all([
         api.get(`/chats/${chatId}/messages`),
         api.get('/chats/'),
-        api.get('/docs/'),
       ])
       setMessages(msgsRes.data)
-      setDocs(docsRes.data)
       const found = chatsRes.data.find(c => c.id === chatId)
       if (found) setChat(found)
-    } catch {
-      toast.error('Failed to load chat')
-    } finally {
-      setInitialLoad(false)
-    }
+    } catch { toast('Failed to load chat', 'error') }
   }
 
-  const sendMessage = useCallback(async (content) => {
-    const tempId = `temp-${Date.now()}`
-    const userMsg = { id: tempId, role: 'user', content }
-    setMessages(m => [...m, userMsg])
-    setLoading(true)
+  const loadDocs = async () => {
+    try { const { data } = await api.get('/docs/'); setDocs(data) } catch {}
+  }
+
+  const send = useCallback(async (text) => {
+    const content = text || input.trim()
+    if (!content || busy) return
+    setInput(''); setBusy(true)
+
+    const tempMsg = { id: 'tmp', role: 'user', content }
+    setMessages(m => [...m, tempMsg])
+
     try {
-      const res = await api.post('/messages/', {
+      const { data } = await api.post('/messages/', {
         chat_id: chatId,
         content,
         mode: chat?.mode || 'general',
         doc_id: selectedDoc || null,
       })
-      setMessages(m => [...m, res.data])
+      setMessages(m => [...m.filter(x => x.id !== 'tmp'), { role:'user', content, id: Date.now() }, data])
+
+      // Update chat title if auto-renamed
       if (chat?.title === 'New Chat') {
-        setChat(c => ({ ...c, title: content.slice(0, 40) + (content.length > 40 ? '…' : '') }))
+        const newTitle = content.slice(0,46) + (content.length > 46 ? '…' : '')
+        setChat(c => ({ ...c, title: newTitle }))
+        setChats?.(cs => cs.map(c => c.id === chatId ? { ...c, title: newTitle } : c))
       }
     } catch (err) {
-      setMessages(m => m.filter(msg => msg.id !== tempId))
-      toast.error(err.response?.data?.detail || 'Failed — check if backend is running')
-    } finally {
-      setLoading(false)
-    }
-  }, [chatId, chat, selectedDoc])
+      setMessages(m => m.filter(x => x.id !== 'tmp'))
+      toast(err.response?.data?.detail || 'Failed to send message', 'error')
+    } finally { setBusy(false); textRef.current?.focus() }
+  }, [input, busy, chatId, chat, selectedDoc, setChats])
 
-  const meta = MODE_META[chat?.mode] || MODE_META.general
+  const handleKey = e => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send() }
+  }
+
+  const autoResize = e => {
+    e.target.style.height = 'auto'
+    e.target.style.height = Math.min(e.target.scrollHeight, 140) + 'px'
+  }
+
+  const meta = MODES[chat?.mode] || MODES.general
   const starters = STARTERS[chat?.mode] || STARTERS.general
-
-  if (initialLoad) return (
-    <div className="flex items-center justify-center h-full">
-      <div className="w-6 h-6 border-2 border-violet-500 border-t-transparent rounded-full animate-spin" />
-    </div>
-  )
+  const userInitial = user?.name?.[0]?.toUpperCase() || 'U'
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center gap-3 px-4 py-3 border-b border-white/[0.06] bg-[#080B14]">
-        <div className={`w-8 h-8 rounded-xl ${meta.bg} flex items-center justify-center text-lg`}>
-          {meta.emoji}
-        </div>
+    <div className="chat-view">
+      {/* Topbar */}
+      <div className="topbar">
+        <div className="tb-badge">{meta.emoji}</div>
         <div>
-          <h2 className="font-semibold text-sm text-white/90 truncate max-w-xs">{chat?.title || '…'}</h2>
-          <p className={`text-xs ${meta.color}`}>{meta.label}</p>
+          <div className="tb-title">{chat?.title || 'Loading…'}</div>
+          <div className="tb-mode">{meta.label}</div>
         </div>
       </div>
 
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto relative z-10">
-        {messages.length === 0 && !loading && (
-          <div className="flex flex-col items-center justify-center h-full px-4 text-center">
-            <motion.div initial={{ scale:0.8, opacity:0 }} animate={{ scale:1, opacity:1 }}
-              className={`text-5xl mb-4`}>{meta.emoji}</motion.div>
-            <motion.h3 initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.1 }}
-              className="font-bold text-xl text-white mb-2">{meta.label}</motion.h3>
-            <motion.p initial={{ opacity:0 }} animate={{ opacity:1 }} transition={{ delay:0.2 }}
-              className="text-sm text-white/40 mb-8 max-w-sm leading-relaxed">
-              {chat?.mode==='dsa' && "Share any coding problem and I'll walk through the optimal solution with you."}
-              {chat?.mode==='hr' && "Let's practice behavioral questions. I'll give structured feedback on each answer."}
-              {chat?.mode==='resume' && "Share your resume or bullet points and I'll give you specific ATS improvements."}
-              {chat?.mode==='cs' && "Ask anything about OS, DBMS, CN, OOP, or System Design — interview-focused answers."}
-              {chat?.mode==='mock' && "I'll conduct a realistic mock interview — technical + HR. Ready when you are."}
-              {(!chat?.mode || chat?.mode==='general') && "Your AI placement mentor. Ask anything about jobs, prep, or your career."}
-            </motion.p>
-            <motion.div initial={{ opacity:0, y:8 }} animate={{ opacity:1, y:0 }} transition={{ delay:0.3 }}
-              className="flex flex-wrap gap-2 justify-center max-w-lg">
-              {starters.map((s, i) => (
-                <button key={i} onClick={() => sendMessage(s)}
-                  className="text-xs px-3.5 py-2 rounded-xl border border-white/10 hover:border-violet-500/40 hover:bg-violet-500/10 text-white/50 hover:text-white/80 transition-all duration-200 flex items-center gap-1.5">
-                  <Zap className="w-3 h-3" /> {s}
-                </button>
-              ))}
-            </motion.div>
-          </div>
-        )}
+      <div className="msgs-area">
+        <div className="msgs-inner">
+          {messages.length === 0 && !busy && (
+            <div className="empty-state">
+              <div className="empty-icon">{meta.emoji}</div>
+              <div className="empty-title">{meta.label}</div>
+              <div className="empty-sub">
+                {{
+                  dsa:    "Share any coding problem — I'll walk through the optimal solution.",
+                  hr:     "Let's practice behavioral questions with STAR feedback.",
+                  resume: "Share your resume for ATS and impact improvements.",
+                  cs:     "Ask anything about OS, DBMS, CN, OOP, or System Design.",
+                  mock:   "Ready for a realistic mock interview — technical + HR.",
+                  general:"Your AI placement mentor. Ask anything.",
+                }[chat?.mode] || "Your AI placement mentor. Ask anything."}
+              </div>
+              <div className="starters">
+                {starters.map(s => (
+                  <button key={s} className="starter-btn" onClick={() => send(s)}>{s}</button>
+                ))}
+              </div>
+            </div>
+          )}
 
-        <AnimatePresence initial={false}>
-          {messages.map(msg => <ChatMessage key={msg.id} message={msg} />)}
-        </AnimatePresence>
-        {loading && <TypingIndicator />}
-        <div ref={bottomRef} className="h-4" />
+          {messages.map((msg, i) => (
+            <Message key={msg.id || i} msg={msg} userInitial={userInitial} />
+          ))}
+
+          {busy && (
+            <div className="typing-row">
+              <div className="msg-av ai">🧠</div>
+              <div className="typing-bubble">
+                <div className="typing-dot" /><div className="typing-dot" /><div className="typing-dot" />
+              </div>
+            </div>
+          )}
+          <div ref={bottomRef} />
+        </div>
       </div>
 
-      <ChatInput onSend={sendMessage} loading={loading} docs={docs} selectedDoc={selectedDoc} onDocSelect={setSelectedDoc} />
+      {/* Input */}
+      <div className="input-area">
+        {docs.length > 0 && (
+          <div className="doc-pills">
+            <button className={`doc-pill${!selectedDoc?' active':''}`} onClick={() => setSelectedDoc(null)}>No PDF</button>
+            {docs.map(d => (
+              <button key={d.id} className={`doc-pill${selectedDoc===d.id?' active':''}`}
+                onClick={() => setSelectedDoc(d.id)}>
+                📎 {d.filename.length > 20 ? d.filename.slice(0,20)+'…' : d.filename}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="input-shell">
+          <textarea
+            ref={textRef}
+            className="msg-input"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={handleKey}
+            onInput={autoResize}
+            placeholder="Message PrepAI…"
+            rows={1}
+            disabled={busy}
+          />
+          <button className="send-btn" onClick={() => send()} disabled={!input.trim() || busy}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+              <path d="M22 2L11 13M22 2L15 22l-4-9-9-4 20-7z"/>
+            </svg>
+          </button>
+        </div>
+        <div className="input-hint">PrepAI can make mistakes — verify important info.</div>
+      </div>
     </div>
   )
 }
